@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    kai_bot_tactics.csproj
+    KAI ADDITION. Not part of CS2-Bot-Improver.
+
+    Mirrors the conventions in ed0ard's own plugin projects so this builds
+    against the same CounterStrikeSharp version his plugins do. If his release
+    bumps that version, bump it here too or the API surface can drift.
+
+    AssemblyName must match the plugin folder name. CounterStrikeSharp loads
+    plugins/<Name>/<Name>.dll, so the built output has to be KaiBotTactics.dll
+    sitting in a folder called KaiBotTactics.
+
+    BotControllerApi.dll is the shared cross-plugin API assembly that ships
+    with CS2-Bot-Improver. Copy it from your installed game at
+
+      game/csgo/addons/counterstrikesharp/shared/BotControllerApi/BotControllerApi.dll
+
+    into a libs folder next to this csproj. Private is false on purpose: the
+    runtime already has that assembly loaded, and shipping a second copy would
+    produce two distinct types with the same name, at which point the
+    capability lookup silently returns null and the fake defuse stops working.
+  -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>KaiBotTactics</AssemblyName>
+    <RootNamespace>KaiBotTactics</RootNamespace>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CounterStrikeSharp.API" Version="1.0.371" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="BotControllerApi">
+      <HintPath>libs\BotControllerApi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!--
+      RayTraceApi.dll ships with CS2-Bot-Improver and is what BotAimImprover
+      and NadeSystem already use for line-of-sight tests. Copy it into libs
+      alongside BotControllerApi.dll. Private is false for the same reason:
+      the runtime already has it loaded, and a second copy would give two
+      distinct types with the same name so the capability lookup returns null.
+    -->
+    <Reference Include="RayTraceApi">
+      <HintPath>libs\RayTraceApi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>
