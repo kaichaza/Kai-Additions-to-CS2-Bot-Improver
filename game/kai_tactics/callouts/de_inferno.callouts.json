@@ -1,0 +1,419 @@
+{
+  "mapName": "de_inferno",
+  "maxDistance": 750,
+  "anchors": [
+    {
+      "name": "Coffins",
+      "x": 58,
+      "y": 3158,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Garden",
+      "x": 353,
+      "y": 3346,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Sandbags Construction",
+      "x": 1620,
+      "y": 3384,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Dark",
+      "x": -40,
+      "y": 3121,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Construction",
+      "x": 1067,
+      "y": 3090,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Fountain",
+      "x": -261,
+      "y": 2871,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Site",
+      "x": 292,
+      "y": 2683,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Grill",
+      "x": 661,
+      "y": 2858,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Truck",
+      "x": 1251,
+      "y": 2883,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Quad",
+      "x": -77,
+      "y": 2545,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT",
+      "x": 833,
+      "y": 2595,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Tree",
+      "x": 1251,
+      "y": 2545,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Terrace",
+      "x": 2198,
+      "y": 2452,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Well",
+      "x": 1829,
+      "y": 2477,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Second Oranges",
+      "x": 144,
+      "y": 2389,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "First Oranges",
+      "x": 427,
+      "y": 2389,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT Boost",
+      "x": 1214,
+      "y": 2339,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT Spawn",
+      "x": 2321,
+      "y": 2139,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Boost",
+      "x": -3,
+      "y": 2201,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Speedway",
+      "x": 1534,
+      "y": 2064,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Car",
+      "x": 329,
+      "y": 1970,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Sandbags Banana",
+      "x": 784,
+      "y": 1820,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Banana",
+      "x": 181,
+      "y": 1657,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Logs",
+      "x": -261,
+      "y": 1532,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Long Corner",
+      "x": 1030,
+      "y": 1344,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Arch",
+      "x": 1682,
+      "y": 1350,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Kitchen",
+      "x": 2333,
+      "y": 1394,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Long",
+      "x": 1596,
+      "y": 1056,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Library",
+      "x": 2395,
+      "y": 1075,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Ledge",
+      "x": -680,
+      "y": 950,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Underpass",
+      "x": 489,
+      "y": 950,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Ramp",
+      "x": -274,
+      "y": 787,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Bench",
+      "x": 1005,
+      "y": 881,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Graveyard",
+      "x": 2518,
+      "y": 737,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Boiler",
+      "x": 1153,
+      "y": 650,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Back Site",
+      "x": 1780,
+      "y": 719,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Bottom Mid",
+      "x": -126,
+      "y": 537,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Mid",
+      "x": 476,
+      "y": 525,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Top Mid",
+      "x": 1337,
+      "y": 443,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Site",
+      "x": 1940,
+      "y": 387,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Spawn",
+      "x": -1706,
+      "y": 450,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Close Left",
+      "x": 1706,
+      "y": 174,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Mid Stairs",
+      "x": 821,
+      "y": 143,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Living Room",
+      "x": -397,
+      "y": 168,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Short",
+      "x": 1497,
+      "y": 55,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Balcony",
+      "x": -102,
+      "y": -7,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Patio",
+      "x": 1411,
+      "y": -70,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Second Mid",
+      "x": 181,
+      "y": -151,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Window",
+      "x": 895,
+      "y": -151,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Truck Cemetery",
+      "x": 2137,
+      "y": -138,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT Apps",
+      "x": 1091,
+      "y": -307,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Pit",
+      "x": 2420,
+      "y": -464,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Apps",
+      "x": -225,
+      "y": -514,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Apps Stairs",
+      "x": 1227,
+      "y": -545,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Back Alley",
+      "x": 489,
+      "y": -651,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Close Apps",
+      "x": 1596,
+      "y": -651,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Apps Balcony",
+      "x": 2137,
+      "y": -670,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Bridge",
+      "x": -680,
+      "y": -733,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Second Mid Door",
+      "x": -102,
+      "y": -870,
+      "z": 0,
+      "hasHeight": false
+    }
+  ]
+}

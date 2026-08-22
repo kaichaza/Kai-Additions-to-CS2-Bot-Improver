@@ -203,7 +203,49 @@ public sealed class KaiBreadcrumbs
     public int SaturationNewNodes = 20;
 
     // That many quiet rounds in a row and the map is considered covered.
-    public int SaturationRounds = 3;
+    //
+    // Was 3, which is one execute's worth of evidence. Five bots running the
+    // same corridor three rounds running looks exactly like a fully walked
+    // map, and on de_cache that is precisely what happened: the graph latched
+    // at 969 nodes covering 14% of its own bounding box, against de_mirage's
+    // 2541 nodes at 46%.
+    public int SaturationRounds = 10;
+
+    // Coverage floor. Saturation cannot latch below this many nodes however
+    // quiet the rounds are, because a quiet round on a barely-walked map means
+    // the bots are repeating themselves, not that the map is finished.
+    //
+    // This is a floor, not a target. Once the graph is past it the ordinary
+    // quiet-round test applies again and recording stops as it always did, so
+    // the file settles somewhere near this figure rather than growing without
+    // limit. MaxNodes remains the hard ceiling above it.
+    //
+    // 2000 is chosen from the maps that already work: mirage 2541, dust2 1457,
+    // inferno 1040, cache 969. It is above the three thin ones deliberately,
+    // since dust2 and inferno are usable and cache is not, and the difference
+    // is not in the node count alone but in how much of the map they cover.
+    public int SaturationMinNodes = 2000;
+
+    // Absolute stop. Even a map that never reaches the floor gives up after
+    // this many recorded rounds, so a map with genuinely less walkable ground
+    // than the floor assumes cannot record for ever.
+    public int SaturationMaxRounds = 400;
+
+    // Maps that are already known good and should keep the original strict
+    // behaviour, latching on quiet rounds alone with no coverage floor.
+    //
+    // A deliberate band-aid. These three produce usable graphs today and there
+    // is nothing to gain from recording more of them, so they opt out and
+    // anything else, cache included and any map added later, gets the floor.
+    // Emptying this set removes the special case entirely and applies the
+    // floor everywhere, which is where this should end up once the thin maps
+    // have caught up.
+    public readonly HashSet<string> SaturationExemptMaps = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "de_mirage",
+        "de_dust2",
+        "de_inferno",
+    };
 
     // Absolute ceilings. Generous, because Nuke and Train are far larger than
     // Mirage, but finite.
@@ -222,6 +264,11 @@ public sealed class KaiBreadcrumbs
 
     private int _quietRounds;
     private int _nodesAtRoundStart;
+
+    // Rounds this graph has actually recorded, across sessions within a map.
+    // Only used to stop a map that never reaches the coverage floor from
+    // recording for ever.
+    private int _roundsRecorded;
 
     // ------------------------------------------------------------------
     // State
@@ -255,7 +302,7 @@ public sealed class KaiBreadcrumbs
 
     public string Summary()
     {
-        return $"enabled={Enabled} saturated={Saturated} usable={IsUsable} " +
+        return $"enabled={Enabled} saturated={Saturated} usable={IsUsable} floor={SaturationMinNodes} " +
                $"nodes={_nodes.Count}/{MaxNodes} edges={_edges.Count}/{MaxEdges} " +
                $"newThisSession={_nodesThisSession}n/{_edgesThisSession}e " +
                $"quietRounds={_quietRounds}/{SaturationRounds} " +
@@ -277,6 +324,31 @@ public sealed class KaiBreadcrumbs
         _nextAutosave = 0.0f;
 
         Load();
+
+        // A new session gets a fresh hearing.
+        //
+        // Saturation is a claim about the map, but it is only ever evidenced
+        // by what the bots did in one stretch of play. A map that latched
+        // after three quiet rounds of the same execute has not been walked,
+        // it has been sampled narrowly, and the next session with different
+        // plays and different spawns will find ground the last one never
+        // touched. Below the coverage floor the latch is therefore released
+        // and has to be earned again.
+        //
+        // Above the floor, and for the exempt maps, it stays latched: those
+        // graphs are finished and reopening them would only grow the file.
+        if (Saturated
+            && !SaturationExemptMaps.Contains(_mapName)
+            && _nodes.Count < SaturationMinNodes)
+        {
+            Saturated = false;
+            _quietRounds = 0;
+
+            KaiLog.Event(nameof(OnMapStart),
+                $"'{_mapName}' was saturated at {_nodes.Count} nodes, below the floor of " +
+                $"{SaturationMinNodes}. Reopening recording for this session: the previous " +
+                $"latch was three quiet rounds of one route, not a walked map.");
+        }
     }
 
     public void OnRoundStart()
@@ -294,23 +366,71 @@ public sealed class KaiBreadcrumbs
 
         if (_nodesAtRoundStart > 0 && !Saturated)
         {
+            _roundsRecorded++;
+
             if (found <= SaturationNewNodes && _nodes.Count >= MinUsableNodes)
             {
                 _quietRounds++;
 
+                // Is this map allowed to latch yet?
+                //
+                // A quiet round means the bots found nothing new. On a map
+                // that has been walked, that means it is finished. On a map
+                // that has barely been walked, it means the bots have been
+                // running the same route, which is a fact about the bots
+                // rather than about the map.
+                bool exempt = SaturationExemptMaps.Contains(_mapName);
+                bool covered = _nodes.Count >= SaturationMinNodes;
+                bool outOfPatience = _roundsRecorded >= SaturationMaxRounds;
+                bool mayLatch = exempt || covered || outOfPatience;
+
                 KaiLog.Event(nameof(OnRoundStart),
                     $"round added only {found} new node(s), {_quietRounds} quiet round(s) " +
-                    $"of {SaturationRounds} needed before the map counts as covered");
+                    $"of {SaturationRounds} needed before the map counts as covered " +
+                    $"({_nodes.Count} nodes against a floor of {SaturationMinNodes}, " +
+                    $"round {_roundsRecorded} of at most {SaturationMaxRounds}, " +
+                    $"exempt={exempt})");
 
-                if (_quietRounds >= SaturationRounds)
+                if (_quietRounds >= SaturationRounds && !mayLatch)
+                {
+                    // Quiet, but nowhere near enough ground covered to
+                    // believe it. Hold the counter at the threshold rather
+                    // than letting it run away, so the moment the floor is
+                    // reached the next quiet round latches immediately.
+                    _quietRounds = SaturationRounds;
+
+                    KaiLog.Throttled("satfloor", nameof(OnRoundStart),
+                        $"'{_mapName}' has been quiet for {_quietRounds} round(s) but holds " +
+                        $"only {_nodes.Count} nodes against a floor of {SaturationMinNodes}. " +
+                        $"That reads as bots repeating a route rather than a finished map, " +
+                        $"so recording continues.", 60.0f);
+                }
+
+                if (_quietRounds >= SaturationRounds && mayLatch)
                 {
                     Saturated = true;
 
+                    string why;
+
+                    if (exempt)
+                    {
+                        why = "it is on the exempt list and keeps the original strict rule";
+                    }
+                    else if (covered)
+                    {
+                        why = $"it is past the coverage floor of {SaturationMinNodes} nodes";
+                    }
+                    else
+                    {
+                        why = $"it has recorded {_roundsRecorded} rounds without reaching the " +
+                              $"floor, which is as long as it gets";
+                    }
+
                     KaiLog.Event(nameof(OnRoundStart),
                         $"breadcrumb graph for '{_mapName}' is saturated at {_nodes.Count} nodes " +
-                        $"and {_edges.Count} edges. Recording stops here; the map has stopped " +
-                        $"producing new ground and further sampling would only grow the file. " +
-                        $"Use kai_crumbs resume to override.");
+                        $"and {_edges.Count} edges, because {why}. Recording stops here; the map " +
+                        $"has stopped producing new ground and further sampling would only grow " +
+                        $"the file. Use kai_crumbs resume to override.");
 
                     Save("saturated");
                 }
@@ -994,6 +1114,7 @@ public sealed class KaiBreadcrumbs
     public void Resume()
     {
         Saturated = false;
+        _roundsRecorded = 0;
         _quietRounds = 0;
         _nodesAtRoundStart = _nodes.Count;
 
@@ -1011,6 +1132,7 @@ public sealed class KaiBreadcrumbs
         _nodesThisSession = 0;
         _edgesThisSession = 0;
         Saturated = false;
+        _roundsRecorded = 0;
         _quietRounds = 0;
         _nodesAtRoundStart = 0;
 
@@ -1032,39 +1154,137 @@ public sealed class KaiBreadcrumbs
     // Only nodes seen with somebody's feet on the ground are candidates: a
     // cell only ever observed mid-jump is somewhere bots pass through, not
     // somewhere they can stand.
+    //
+    // Searched outward from the target's own cell rather than by scanning
+    // every node. The old version was a linear pass over the whole dictionary,
+    // 2541 entries on Mirage, which was affordable only because it was called
+    // rarely. It is now called on every failed snap, at several radii, for
+    // several candidates, so it walks rings of cells instead and stops one
+    // ring after it finds anything.
     public KaiPoint? NearestStandable(float x, float y, float z, float maxDistance)
     {
-        KaiCrumbNode? best = null;
-        float bestDist = maxDistance;
+        var found = NearestStandableSet(x, y, z, maxDistance, 1);
 
-        foreach (var node in _nodes.Values)
-        {
-            if (!node.Ground)
-            {
-                continue;
-            }
-
-            float dx = node.X - x;
-            float dy = node.Y - y;
-            float dz = node.Z - z;
-
-            // Height is weighted heavily so a node on the floor above is not
-            // picked as the nearest match for one on the floor below.
-            float dist = MathF.Sqrt((dx * dx) + (dy * dy) + (dz * dz * 4.0f));
-
-            if (dist < bestDist)
-            {
-                bestDist = dist;
-                best = node;
-            }
-        }
-
-        if (best == null)
+        if (found.Count == 0)
         {
             return null;
         }
 
-        return new KaiPoint(best.X, best.Y, best.Z);
+        return found[0];
+    }
+
+    // The nearest few standing positions, nearest first.
+    //
+    // Wanted because "the single nearest node" is a poor answer for a bot that
+    // is wedged: the nearest node is regularly on the other side of whatever
+    // it is wedged against. Handing back several lets the caller try them in
+    // turn, or filter them by what it can actually see.
+    public List<KaiPoint> NearestStandableSet(
+        float x, float y, float z, float maxDistance, int want)
+    {
+        var result = new List<KaiPoint>();
+
+        if (want <= 0 || _nodes.Count == 0)
+        {
+            return result;
+        }
+
+        int cx = (int)MathF.Floor(x / CellSizeXY);
+        int cy = (int)MathF.Floor(y / CellSizeXY);
+        int cz = (int)MathF.Floor(z / CellSizeZ);
+
+        // How many rings out the radius could possibly reach. The vertical
+        // term is weighted by four in the distance measure, so a ring in Z
+        // buys half as much reach as one in XY.
+        int maxRingXY = (int)MathF.Ceiling(maxDistance / CellSizeXY) + 1;
+        int maxRingZ = (int)MathF.Ceiling((maxDistance / 2.0f) / CellSizeZ) + 1;
+
+        var hits = new List<(float Dist, KaiCrumbNode Node)>();
+        int ringWithFirstHit = -1;
+
+        for (int ring = 0; ring <= maxRingXY; ring++)
+        {
+            // Stop one ring after the first hit. The extra ring matters
+            // because a node in the next ring out can still be nearer in
+            // straight-line terms than one at the corner of this one.
+            if (ringWithFirstHit >= 0 && ring > ringWithFirstHit + 1)
+            {
+                break;
+            }
+
+            ScanRing(cx, cy, cz, ring, maxRingZ, x, y, z, maxDistance, hits);
+
+            if (hits.Count > 0 && ringWithFirstHit < 0)
+            {
+                ringWithFirstHit = ring;
+            }
+        }
+
+        hits.Sort((a, b) => a.Dist.CompareTo(b.Dist));
+
+        foreach (var hit in hits)
+        {
+            if (result.Count >= want)
+            {
+                break;
+            }
+
+            result.Add(new KaiPoint(hit.Node.X, hit.Node.Y, hit.Node.Z));
+        }
+
+        return result;
+    }
+
+    // One shell of cells at Chebyshev distance `ring` from the centre cell,
+    // across every Z layer within reach.
+    private void ScanRing(
+        int cx, int cy, int cz, int ring, int maxRingZ,
+        float x, float y, float z, float maxDistance,
+        List<(float, KaiCrumbNode)> hits)
+    {
+        for (int dz = -maxRingZ; dz <= maxRingZ; dz++)
+        {
+            for (int dx = -ring; dx <= ring; dx++)
+            {
+                for (int dy = -ring; dy <= ring; dy++)
+                {
+                    // Only the shell, not the solid block, or every ring
+                    // would rescan everything inside it.
+                    if (ring > 0
+                        && Math.Abs(dx) != ring
+                        && Math.Abs(dy) != ring)
+                    {
+                        continue;
+                    }
+
+                    string key = CellKey(cx + dx, cy + dy, cz + dz);
+
+                    if (!_nodes.TryGetValue(key, out var node))
+                    {
+                        continue;
+                    }
+
+                    if (!node.Ground)
+                    {
+                        continue;
+                    }
+
+                    float ddx = node.X - x;
+                    float ddy = node.Y - y;
+                    float ddz = node.Z - z;
+
+                    // Height is weighted heavily so a node on the floor above
+                    // is not picked as the nearest match for one below.
+                    float dist = MathF.Sqrt(
+                        (ddx * ddx) + (ddy * ddy) + (ddz * ddz * 4.0f));
+
+                    if (dist <= maxDistance)
+                    {
+                        hits.Add((dist, node));
+                    }
+                }
+            }
+        }
     }
 
     // The graph as traversable links, for the router.

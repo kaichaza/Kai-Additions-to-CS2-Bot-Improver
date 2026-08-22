@@ -299,6 +299,19 @@ public sealed class KaiBotIntent
     // arriving quickly or quietly.
     public bool Erratic;
 
+    // Jump this tick, deliberately.
+    //
+    // Distinct from Erratic, which jumps as part of being hard to hit. This
+    // is a single wanted jump: the escape routine's last resort for a bot
+    // caught on a lip or a step, where changing height is the only thing that
+    // will free it.
+    //
+    // The movement hook suppresses the native anti-stuck jump while a bot is
+    // pinned or steered, because that reflex is what made stuck bots hop on
+    // the spot. This flag is the exemption, so a jump the plugin actually
+    // asked for still happens.
+    public bool Jump;
+
     // Move at walking pace rather than running. Walking is silent in CS2, so
     // this is what lets a bot reposition without drowning out the footsteps it
     // is trying to hear.

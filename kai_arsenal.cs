@@ -81,6 +81,19 @@ public sealed class KaiArsenal
     // before it arrives.
     public float PickupRange = 1600.0f;
 
+    // Furthest a bot will charge an armed enemy holding nothing but a knife.
+    //
+    // The knife is the only answer at close range and a hopeless one at any
+    // other. Measured across three sessions: the median knife charge covered
+    // 481 units, but 20 of 111 were over 800 and the longest was 1516, which
+    // is a bot sprinting most of the length of the map at somebody with a
+    // rifle. Beyond this the bot breaks off and goes for a gun on the floor
+    // instead, which is the same decision a person would make.
+    //
+    // 600 units is roughly two seconds of running, which is about as long as
+    // anybody survives crossing open ground at a loaded weapon.
+    public float KnifeRushRange = 600.0f;
+
     // How near a weapon has to be before a bot has to be able to see it. Very
     // close, so a bot walks onto something in the open rather than needing a
     // clear line from wherever it started.
@@ -119,7 +132,7 @@ public sealed class KaiArsenal
 
         return $"enabled={Enabled} known={_known.Count} ({primaries} primary) " +
                $"collecting={_collecting.Count} knifing={_knifeSince.Count} " +
-               $"dryAt={DryThreshold}";
+               $"dryAt={DryThreshold} knifeRange={KnifeRushRange:F0}";
     }
 
     public void OnRoundStart()
@@ -487,6 +500,115 @@ public sealed class KaiArsenal
     // ------------------------------------------------------------------
     // Naming
     // ------------------------------------------------------------------
+
+    // How far out this weapon is worth holding a line from.
+    //
+    // Used by the post-plant overwatch: a defender that arrives too late to be
+    // part of the ring holds a line onto the bomb instead, and how far back it
+    // can usefully sit is entirely a question of what it is carrying.
+    //
+    // The numbers are holding distances, not maximum ranges. A rifle can hit
+    // at 3000 units; it is worth SITTING at around 1400, far enough to see a
+    // defuser start and be outside the fight on the site, near enough that the
+    // shots land. A shotgun at 1400 is a spectator.
+    //
+    // There are no AWPs in this game mode, so no entry here assumes one. The
+    // sniper rifles are still listed because the game can hand one out
+    // through a dropped weapon, and a bot holding an SSG is better off far
+    // back than guessing.
+    public static float HoldingRangeOf(string designerName)
+    {
+        return designerName switch
+        {
+            // Machine guns. Heaviest calibre, worst mobility, best suppression:
+            // exactly the weapon you want sitting still a long way back.
+            "weapon_m249" or "weapon_negev" => 1800.0f,
+
+            // Rifles. The default long hold.
+            "weapon_ak47" or "weapon_m4a1" or "weapon_m4a1_silencer"
+                or "weapon_sg556" or "weapon_aug" or "weapon_galilar"
+                or "weapon_famas" => 1400.0f,
+
+            // Sniper rifles, if one is ever picked up off the ground.
+            "weapon_ssg08" or "weapon_scar20" or "weapon_g3sg1"
+                or "weapon_awp" => 2000.0f,
+
+            // Submachine guns. Accurate enough at mid range, useless past it.
+            "weapon_mp9" or "weapon_mac10" or "weapon_mp7" or "weapon_mp5sd"
+                or "weapon_ump45" or "weapon_p90" or "weapon_bizon" => 800.0f,
+
+            // Shotguns. Have to be close or they are doing nothing at all.
+            "weapon_nova" or "weapon_xm1014" or "weapon_mag7"
+                or "weapon_sawedoff" => 400.0f,
+
+            // Pistols. Closer than a rifle, further than a shotgun.
+            "weapon_deagle" or "weapon_revolver" => 900.0f,
+
+            "weapon_knife" or "weapon_bayonet" => 250.0f,
+
+            // Everything else is a pistol of some description.
+            _ => 650.0f,
+        };
+    }
+
+    // The holding range for whatever this player currently has out, falling
+    // back to the best weapon they own if the active one cannot be read.
+    public static float HoldingRangeFor(CCSPlayerController player)
+    {
+        try
+        {
+            var active = player.PlayerPawn?.Value?.WeaponServices?.ActiveWeapon?.Value;
+
+            if (active != null && active.IsValid)
+            {
+                return HoldingRangeOf(active.DesignerName);
+            }
+
+            // No active weapon readable. Take the longest range among what it
+            // is carrying, which is the weapon it would sensibly hold with.
+            var weapons = player.PlayerPawn?.Value?.WeaponServices?.MyWeapons;
+
+            if (weapons != null)
+            {
+                float best = 0.0f;
+
+                foreach (var handle in weapons)
+                {
+                    var weapon = handle?.Value;
+
+                    if (weapon == null || !weapon.IsValid)
+                    {
+                        continue;
+                    }
+
+                    if (RoundsLeft(weapon) <= 0)
+                    {
+                        continue;
+                    }
+
+                    float range = HoldingRangeOf(weapon.DesignerName);
+
+                    if (range > best)
+                    {
+                        best = range;
+                    }
+                }
+
+                if (best > 0.0f)
+                {
+                    return best;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            KaiLog.Throttled($"holdrange:{player.Slot}", nameof(HoldingRangeFor),
+                $"could not read the active weapon: {ex.Message}", 30.0f);
+        }
+
+        // Rifle by default. It is what most bots are holding most of the time.
+        return 1400.0f;
+    }
 
     private static bool IsPrimaryWeapon(string designerName)
     {

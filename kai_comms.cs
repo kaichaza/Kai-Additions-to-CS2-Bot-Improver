@@ -494,6 +494,198 @@ public static class KaiCallouts
         Add("Second Mid Door", -102, -870);
     }
 
+    // de_dust2.
+    //
+    // Same method as de_inferno, but anchored differently, because Dust2's
+    // two bombsites sit within a hundred units of each other north to south
+    // and Cache's sit within a hundred and fifty east to west, so a
+    // transform fitted to the sites alone is badly conditioned on both maps.
+    //
+    // Fitted instead on the one thing the recorded data states without
+    // ambiguity: bots do not walk through walls. On the overview a wall is
+    // drawn black and a floor grey, so a candidate scale and offset can be
+    // scored by how many of the 3136 recorded positions land on grey. That
+    // was then sharpened on a test that does not saturate: a player's hull
+    // is 32 units across, so an origin cannot sit within 16 units of a wall
+    // face, and the count of positions that do is a clean minimum. It came
+    // out at 5.700 units per pixel, with pixel (0,0) at world
+    // (-2505.3, 3248.3).
+    //
+    // Checked before being trusted, against things not used to fit it: both
+    // recorded plant positions land inside the drawn orange bombsite
+    // rectangles, and both recorded spawn averages land inside the drawn
+    // green spawn boxes. Against the learned data, 334 of 337 recorded
+    // pre-aim, post-plant and CT-clear positions resolve to a name, and the
+    // plant sites come back as A Site and B Site.
+    //
+    // The three that do not resolve sit in the eastern end of T spawn,
+    // which the overview leaves unlabelled; they are 770 to 880 units from
+    // T Spawn, just outside MaxDistance. Nothing is invented to cover them.
+    //
+    // Not included: A Default Plant and B Default Plant. They name a bomb
+    // position rather than a place, they sit a couple of hundred units from
+    // the site anchors, and the plugin names a bombsite by asking which
+    // callout is nearest the recorded plant position. Keeping them would
+    // make that answer "A Default Plant" where "A Site" is wanted.
+    private static void AddDust2(Action<string, float, float> Add)
+    {
+        // Counted here rather than written down beside the list, so the
+        // log line cannot drift out of step with what actually went in
+        // the next time a callout is added or dropped.
+        int placed = 0;
+
+        void Place(string label, float x, float y)
+        {
+            Add(label, x, y);
+            placed++;
+        }
+
+        Place("Back Plat", -2004, 3094);
+        Place("Goose", 1017, 3017);
+        Place("B Back Site", -1656, 2809);
+        Place("Ninja", 561, 2781);
+        Place("Barrels", 1336, 2767);
+        Place("Scaffolding", -1075, 2673);
+        Place("B Window", -1325, 2661);
+        Place("B Plat", -1978, 2650);
+        Place("B Site", -1559, 2644);
+        Place("A Ramp", 1519, 2627);
+        Place("A Plat", 781, 2604);
+        Place("Double Stack", -1679, 2593);
+        Place("A Site", 1108, 2482);
+        Place("CT Spawn", 257, 2415);
+        Place("Big Box", -1824, 2370);
+        Place("Elevator", 966, 2359);
+        Place("Short Boost", 624, 2262);
+        Place("CT Mid", -610, 2245);
+        Place("A Short", 422, 2211);
+        Place("B Doors", -1317, 2205);
+        Place("Fence", -2220, 2188);
+        Place("A Cross", 1411, 2160);
+        Place("A Car", 1687, 2054);
+        Place("B Boxes", -1080, 2051);
+        Place("B Car", -1613, 1869);
+        Place("Close Mid Doors", -328, 1812);
+        Place("Close", -2198, 1789);
+        Place("Mid Doors", -402, 1692);
+        Place("Stairs", 396, 1661);
+        Place("B Closet", -1596, 1561);
+        Place("A Long", 1388, 1476);
+        Place("Lower Tunnels", -909, 1436);
+        Place("Xbox", -336, 1416);
+        Place("Long Corner", 1291, 1293);
+        Place("Upper Tunnels", -1818, 1151);
+        Place("Blue", 804, 1148);
+        Place("Mid", -459, 1002);
+        Place("Catwalk", -202, 946);
+        Place("Palm", -294, 774);
+        Place("Pit Plat", 1781, 621);
+        Place("Long Doors", 618, 604);
+        Place("Side Pit", 1071, 481);
+        Place("Pit", 1436, 461);
+        Place("Top Mid", -165, 395);
+        Place("Right Side Mid", -713, 381);
+        Place("Outside", -1693, 364);
+        Place("Tunnels", -1696, 136);
+        Place("Outside Long", 573, 136);
+        Place("Suicide", -465, -177);
+        Place("T Ramp", -2095, -331);
+        Place("T Plat", -1365, -383);
+        Place("T Spawn", -741, -783);
+
+        KaiLog.Event(nameof(AddDust2),
+            $"placed {placed} built-in callout anchor(s) for de_dust2");
+    }
+
+    // de_cache.
+    //
+    // Fitted the same way as de_dust2 above: scored on how many recorded
+    // positions land on drawn floor rather than drawn wall, then sharpened
+    // on how many sit within a player half width of a wall face. It came
+    // out at 7.125 units per pixel, with pixel (0,0) at world
+    // (-2025.1, 3280.4).
+    //
+    // Checked before being trusted: the recorded B plant position lands 21
+    // units from the centre of the drawn B bombsite rectangle and the A
+    // plant lands inside the A rectangle, and both spawn averages land
+    // inside their drawn spawn boxes. None of those four were used to fit
+    // the transform. Against the learned data all 303 recorded pre-aim,
+    // post-plant and CT-clear positions resolve to a name, and the plant
+    // sites come back as B Site and A Site, which also settles the site
+    // order: the recorded file has no site letters for this map.
+    //
+    // Not included: A Default and B Default, for the same reason as Dust2.
+    // Default Box is kept, because it names a physical object and sits far
+    // enough from the site centre not to shadow it.
+    //
+    // Heights are left unset, as on de_mirage and de_inferno. Cache does
+    // stack geometry, but the recorded samples do not show two clear height
+    // bands at any anchor, and a wrong Z would silently hide that anchor
+    // from the lookup rather than merely being imprecise.
+    private static void AddCache(Action<string, float, float> Add)
+    {
+        // Counted here rather than written down beside the list, so the
+        // log line cannot drift out of step with what actually went in
+        // the next time a callout is added or dropped.
+        int placed = 0;
+
+        void Place(string label, float x, float y)
+        {
+            Add(label, x, y);
+            placed++;
+        }
+
+        Place("NBK", 41, 2254);
+        Place("Squeaky", 604, 2201);
+        Place("Shroud", 469, 2183);
+        Place("Quad", -297, 2172);
+        Place("A Site", -219, 1773);
+        Place("Default Box", -272, 1592);
+        Place("Lockers", 975, 1485);
+        Place("A Main", 654, 1464);
+        Place("Forklift", 141, 1460);
+        Place("Elektro", -646, 1317);
+        Place("Balcony", 169, 1268);
+        Place("Truck", -903, 1036);
+        Place("A Long", 1260, 1029);
+        Place("Highway", -212, 901);
+        Place("Cubby", 511, 815);
+        Place("CT Spawn", -1470, 803);
+        Place("T Truck", 2300, 701);
+        Place("Boost", 821, 651);
+        Place("White Box", -44, 473);
+        Place("Mid", 429, 306);
+        Place("Red", 1163, 302);
+        Place("CT Halls", -899, 231);
+        Place("Connector", -443, 92);
+        Place("Sand Bags", 91, 67);
+        Place("T Spawn", 3030, 51);
+        Place("Garage", 1238, -15);
+        Place("Roof", 301, -43);
+        Place("Vents", 536, -186);
+        Place("Dumpster", 1206, -325);
+        Place("Checkers", 166, -343);
+        Place("Heaven", -561, -535);
+        Place("Rafters", -383, -549);
+        Place("Boxes", 640, -553);
+        Place("T Boxes", 2043, -667);
+        Place("Hell", -853, -724);
+        Place("B Main", 444, -781);
+        Place("Tree", -999, -824);
+        Place("B Ramp", -59, -909);
+        Place("B Halls", 1014, -909);
+        Place("Pit", 162, -1066);
+        Place("B Site", -51, -1251);
+        Place("Toxic", 982, -1251);
+        Place("Headshot", -301, -1258);
+        Place("Sun Room", 885, -1315);
+        Place("New Boxes", 155, -1386);
+        Place("Spray", 20, -1415);
+
+        KaiLog.Event(nameof(AddCache),
+            $"placed {placed} built-in callout anchor(s) for de_cache");
+    }
+
     // Starting tables. Only maps whose coordinates have actually been checked
     // appear here; a guessed table is worse than none, because a wrong callout
     // sends somebody to the wrong place with confidence.
@@ -509,6 +701,18 @@ public static class KaiCallouts
         if (mapName == "de_inferno")
         {
             AddInferno(Add);
+            return list;
+        }
+
+        if (mapName == "de_dust2")
+        {
+            AddDust2(Add);
+            return list;
+        }
+
+        if (mapName == "de_cache")
+        {
+            AddCache(Add);
             return list;
         }
 

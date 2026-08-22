@@ -77,6 +77,72 @@ public class KaiBotTacticsPlugin : BasePlugin
         "Learned pre-aim, T post-plant holds with rotation, and CT retake discipline";
 
     // ------------------------------------------------------------------
+    // Handicap
+    // ------------------------------------------------------------------
+    //
+    // WHY THIS EXISTS
+    //
+    // Raising the bot difficulty in CS2 does not make bots think better, it
+    // makes them shoot sooner and straighter, which past a point is just an
+    // aimbot in a bot's clothing. Everything above this line is an attempt to
+    // buy difficulty with better decisions instead, and it has gone about as
+    // far as it can: the bots now execute, rotate, hold angles, retake and
+    // trade properly, and a human still beats them, because a human improvises
+    // and they cannot.
+    //
+    // So this is the thumb on the scale, put there deliberately and where it
+    // can be seen. After a grace period from round start, the enemy side is
+    // simply told where the human is, continuously, wherever they are. Not
+    // better aim, not faster reactions, and explicitly not seeing through
+    // walls: knowledge, and only knowledge.
+    //
+    // WHAT IT IS ACTUALLY FOR
+    //
+    // Countering the same hiding spot, round after round. A human who finds
+    // one angle the bots handle badly can farm it indefinitely, because the
+    // learned data has no notion that a position was used last round and the
+    // bots have no memory of having died to it. Telling the side where the
+    // human is means the spot stops working the moment it becomes a habit,
+    // which is the point: it removes the cheap repeatable win without
+    // touching how well the bots shoot.
+    //
+    // WHY A GRACE PERIOD
+    //
+    // Perfect knowledge from the first tick removes the opening entirely: five
+    // bots converge on spawn and every round is the same fight. The delay
+    // leaves the early round genuinely open, so the human still wins or loses
+    // it on their own play, and the handicap only bites once the round has
+    // developed into something the bots would otherwise have to read.
+    //
+    // This is honest practice, not a scoreboard. It is off with one edit.
+
+    // WHY static readonly AND NOT const
+    //
+    // A const bool is folded at compile time, so whichever branch does not
+    // match becomes provably dead and the compiler warns about unreachable
+    // code, on the "off" path when the flag is on and the reverse when it is
+    // off. That would mean a build warning in both positions of a switch that
+    // is meant to be flipped freely.
+    //
+    // static readonly reads identically at every use site, costs nothing at
+    // runtime, and leaves the flag as one edit in one place. The capitalised
+    // names are kept because these are settings rather than tunables: they
+    // change what the plugin is, not how sharply it does it.
+
+    // The whole handicap. Set false and nothing below it runs, and the bots
+    // are back to seeing only what they can actually see.
+    public static readonly bool BOT_GOD_MODE_VS_HUMAN_TRACKING = true;
+
+    // Seconds from round start before the enemy side is told where the human
+    // is. Before this the bots are on their own eyes and ears as usual.
+    public static readonly float BOT_GOD_MODE_VS_HUMAN_DELAY = 30.0f;
+
+    // Whether the handicap keeps working after the bomb is planted, which is
+    // where it matters most: retakes and post-plants are exactly the phase a
+    // human wins by being somewhere unexpected.
+    public static readonly bool BOT_GOD_MODE_VS_HUMAN_POST_PLANT = true;
+
+    // ------------------------------------------------------------------
     // Tunables
     // ------------------------------------------------------------------
 
@@ -117,6 +183,124 @@ public class KaiBotTacticsPlugin : BasePlugin
     // approach-point watching, which ed0ard's Vision_AlwaysWatchApproachPoints
     // patch already makes decent.
     private float _tHoldNearBombRadius = 1600.0f;
+
+    // Furthest from the bomb a post-plant defender will be posted.
+    //
+    // Separate from _tHoldNearBombRadius, which decides whether a bot is close
+    // enough to take part in the hold at all. This decides where it is allowed
+    // to stand once it is taking part, and it is deliberately much tighter: a
+    // ring is only a ring if everybody on it can see the middle.
+    private float _tPostMaxBombDistance = 900.0f;
+
+    // How far a bot may drift from where its glance angles were scored before
+    // they are scored again. Well inside the path follower's 90 unit arrival
+    // radius, so a bot that stops short of its post still gets angles checked
+    // from where it actually stopped.
+    private float _glanceRescoreDistance = 48.0f;
+
+    // ------------------------------------------------------------------
+    // Post-plant rotation sprint
+    // ------------------------------------------------------------------
+    //
+    // Once the bomb is down, the clock is the enemy. A bot on the far side of
+    // the map clearing every corner between itself and the site is playing the
+    // pre-plant round: correct then, and wrong now, because the corners it is
+    // clearing contain nobody and the forty seconds it spends on them are the
+    // whole round.
+    //
+    // So the journey is split. The first half is a run, knife out, looking
+    // where it is going. The second half, once it is close enough that a
+    // lurker is a real possibility, is the careful approach it was doing all
+    // along.
+
+    // Whether the split is applied at all.
+    private bool _rotationSprint = true;
+
+    // Inside this range of the bomb, always careful, whatever the maths says
+    // about the halfway point. This is the ring the defence is holding, and
+    // running into it with a knife out is a gift.
+    private float _sprintDangerRadius = 1400.0f;
+
+    // How much of the journey is run. 0.5 is the half the fix asks for.
+    private float _sprintFraction = 0.5f;
+
+    // Where each rotating bot started from, so half of the journey means half
+    // of ITS journey rather than half of some fixed number. A bot in spawn and
+    // a bot just outside the site have very different halfway points.
+    private readonly Dictionary<int, float> _rotationStartDist = new();
+
+    // Which bots currently have the knife out for speed. Tracked separately
+    // from the arsenal's own knifing state, which means "dry and committed to
+    // a knife fight" and must not be disturbed by this.
+    private readonly HashSet<int> _sprintingKnife = new();
+
+    // When each sprinting bot was last confirmed to still be sprinting.
+    //
+    // Needed because ApplyRotationSprint only runs for a bot the route
+    // follower or the T hold is driving. Anything higher in the priority chain
+    // that claims the bot, contact support or a resupply, means the sprint
+    // function is never called again and EndSprint never fires, which would
+    // leave the bot holding a knife for the rest of the round. The sweep below
+    // catches exactly that.
+    private readonly Dictionary<int, float> _sprintSeen = new();
+
+    // ------------------------------------------------------------------
+    // Post-plant overwatch, for defenders that arrive too late to matter
+    // ------------------------------------------------------------------
+    //
+    // A defender that reaches the site well after the plant is joining a fight
+    // that has already started. Walking into the middle of it to take a ring
+    // post is the worst available option: the ring is what the CTs are
+    // currently breaking, and a bot arriving alone into a broken ring dies
+    // without trading.
+    //
+    // The alternative is to stop outside it and hold a line onto the bomb.
+    // That is worth something the ring is not: whoever is defusing has to
+    // stand still, in the open, on a known spot, and a rifle looking at that
+    // spot from outside the fight beats a rifle inside it.
+    //
+    // How far outside is a question about the gun, not about the map, so it
+    // comes from KaiArsenal.HoldingRangeFor.
+
+    private bool _overwatchEnabled = true;
+
+    // Seconds after the plant beyond which an arriving defender is treated as
+    // late. Roughly the time a competent retake needs to reach the site.
+    private float _overwatchLateSeconds = 18.0f;
+
+    // A bot still this far from the bomb when it becomes late is a candidate.
+    // Closer than this it is effectively already there and may as well post.
+    private float _overwatchMinBombDistance = 1000.0f;
+
+    // How much nearer than its ideal holding range a bot will settle for, when
+    // that is where the line of sight happens to open up.
+    private float _overwatchRangeTolerance = 0.35f;
+
+    // How far ahead of itself a closing bot looks for the point where its line
+    // to the bomb opens up, and how finely it samples that.
+    //
+    // Testing only the bot's current position was the flaw. The acceptance
+    // window for a rifle is roughly 910 to 1400 units from the bomb, and on
+    // Mirage and Inferno the bomb is usually behind a wall at that distance,
+    // so the line only opened once the bot had walked well inside the window
+    // and been handed back to the ring logic. Measured: 38 evaluations, 29
+    // still closing, 8 in range but blind, and exactly one bot ever settled.
+    //
+    // Looking ahead instead means the bot finds the spot where the line opens
+    // BEFORE it walks past it, and stops there.
+    private float _overwatchLookahead = 1200.0f;
+    private float _overwatchProbeStep = 200.0f;
+
+    // slot -> where it settled, so the position is solved once rather than
+    // rediscovered every tick.
+    private readonly Dictionary<int, KaiPoint> _overwatchPost = new();
+
+    // Server time the bomb went down, so lateness is measured against the
+    // plant rather than against the round.
+    private float _plantedAt;
+
+    // How long a sprint may go unconfirmed before it is ended. A few ticks.
+    private const float SprintStaleSeconds = 0.5f;
 
     // Where the enemy is expected to come from, derived at plant time. Every
     // defending T is given a different one of these to watch.
@@ -179,6 +363,10 @@ public class KaiBotTacticsPlugin : BasePlugin
     // slot -> the pre-aim spot indices visible from its held position, and
     // where it is in the cycle.
     private readonly Dictionary<int, List<int>> _glanceSet = new();
+
+    // Where each bot was standing when its glance set was scored, so drift can
+    // be noticed and the set rebuilt.
+    private readonly Dictionary<int, KaiPoint> _glanceOrigin = new();
 
     // The moving equivalent of the glance sweep: which angles a walking bot
     // can currently see, and where it is in the cycle. Rescanned as it moves,
@@ -282,7 +470,12 @@ public class KaiBotTacticsPlugin : BasePlugin
         // and the contact itself does not.
         public int EnemyTeam;
 
-        // Which bot reported it, for the log.
+        // Which bot reported it.
+        //
+        // No longer just for the log: ApplyContactSupport reads this to make
+        // sure a bot never treats its own sighting as a team mate's fight
+        // needing support, which it did on 70% of responses before the check
+        // existed.
         public int ReportedBy;
 
         public float Stamp;
@@ -393,6 +586,72 @@ public class KaiBotTacticsPlugin : BasePlugin
     private readonly Dictionary<int, KaiRoute> _routeOf = new();
     private readonly Dictionary<int, int> _routeLeg = new();
 
+    // Where the tracked human was last seen to be, and when. Read by the
+    // pre-aim bias so bots hold the angle that covers them.
+    //
+    // Null until the handicap engages, and treated as stale after
+    // TrackedHumanStale seconds so a round that ends, or the handicap being
+    // switched off mid-session, does not leave every bot holding an angle onto
+    // a position nobody occupies.
+    private KaiPoint? _trackedHuman;
+    private float _trackedHumanAt;
+
+    // Which side the tracked human is on.
+    //
+    // Needed because the handicap is meant to help their OPPONENTS. Without
+    // this the bias applies to every bot regardless of team, so the human's
+    // own bot team mates preferentially hold the angle covering the human,
+    // which is five bots watching a friendly and nobody watching the way in.
+    private int _trackedHumanTeam = -1;
+
+    // How long a tracked position stays usable. Short, because the whole
+    // point is that it is current.
+    private const float TrackedHumanStale = 2.0f;
+
+    // How often the tracked human is allowed to contribute to the site
+    // attribution. Once a second is plenty for a decision measured in whole
+    // rotations, and stops a per-tick call from swamping the count.
+    private const float TrackedAttributionInterval = 1.0f;
+
+    private float _lastTrackedAttribution;
+
+    // How strongly a pre-aim spot is favoured for covering the tracked human.
+    // Added to the spot's own priority, so it outranks ordinary preference
+    // without overriding the zone and spacing rules that stop the whole side
+    // stacking on one angle.
+    private int _trackedPreAimBonus = 50;
+
+    // How near a pre-aim spot's watch point has to be to the tracked human to
+    // earn that bonus. Generous: the human moves, and an angle covering the
+    // approach they are on is worth holding before they are standing on it.
+    private float _trackedPreAimRadius = 700.0f;
+
+    // How far a point may be from the graph and still be snapped onto it,
+    // tried in order until one succeeds.
+    //
+    // The first entry is the old flat radius and remains the one that should
+    // normally hit. The wider two exist because refusing to path a bot that
+    // has wandered onto unrecorded floor leaves it with nothing at all, and a
+    // start 1600 units away is still a start.
+    private readonly List<float> _snapRadii = new() { 400.0f, 800.0f, 1600.0f };
+
+    // Walks bots to arbitrary destinations along the breadcrumb graph rather
+    // than shoving them at a coordinate. Created here rather than as a field
+    // initialiser because it needs a callback into this instance.
+    private KaiPathFollower? _pathing;
+
+    // Route stall tracking. slot -> the closest it has been to its current
+    // waypoint, when that happened, and how many times the stall has already
+    // been acted on for this leg.
+    //
+    // Without this a bot whose straight line to the next waypoint crosses a
+    // wall stands against that wall for the rest of the round, logging the
+    // same distance every two seconds and looking from the log like it is
+    // still walking.
+    private readonly Dictionary<int, float> _routeBest = new();
+    private readonly Dictionary<int, float> _routeBestAt = new();
+    private readonly Dictionary<int, int> _routeStalls = new();
+
     // slot -> true if this bot is faking: it will turn round partway and go
     // back the way it came.
     private readonly Dictionary<int, bool> _routeFaking = new();
@@ -459,6 +718,27 @@ public class KaiBotTacticsPlugin : BasePlugin
     private float _decoyPatienceSeconds = 18.0f;
 
     private bool _useRoutes = true;
+
+    // How long a bot may fail to close on its next waypoint before the route
+    // follower decides something is in the way. Four seconds is long enough
+    // that a bot rounding a corner away from the waypoint is not punished for
+    // it, short enough that a wall is noticed while the round is still worth
+    // playing.
+    private float _routeStallSeconds = 4.0f;
+
+    // How much closer the bot has to get for it to count as progress.
+    private float _routeStallImprovement = 32.0f;
+
+    // Beyond this from the first waypoint of a chosen route, the bot is given
+    // a solved approach path to that waypoint rather than being pointed
+    // straight at it.
+    //
+    // The measured median distance from a bot to waypoint zero of the route it
+    // had just been handed was 1462 units, with a maximum of 4522: PickRoute
+    // never checked whether the bot was anywhere near the start of the route
+    // it was being given, and steering has no obstacle avoidance, so any wall
+    // in between ended the bot's round on the spot.
+    private float _routeApproachDistance = 500.0f;
     private readonly Random _routeRandom = new();
 
     // Calls the plays and the audibles. See kai_playbook.cs.
@@ -741,6 +1021,23 @@ public class KaiBotTacticsPlugin : BasePlugin
                     + "crossfire-support, breadcrumbs");
 
         KaiLog.Event(nameof(Load), $"loading v{ModuleVersion}, hotReload={hotReload}, {KaiTime.NowUtc()}");
+
+        // Announce the handicap at load, every time, whether it is on or off.
+        // A difficulty setting that is not visible in the log is one that gets
+        // forgotten about and then blamed on the bots being mysteriously good.
+        if (BOT_GOD_MODE_VS_HUMAN_TRACKING)
+        {
+            KaiLog.Event(nameof(Load),
+                $"HANDICAP ON: the enemy side is told where the human is, continuously, " +
+                $"from {BOT_GOD_MODE_VS_HUMAN_DELAY:F0}s into each round " +
+                $"(postPlant={BOT_GOD_MODE_VS_HUMAN_POST_PLANT}). " +
+                $"Set BOT_GOD_MODE_VS_HUMAN_TRACKING false to play them straight.");
+        }
+        else
+        {
+            KaiLog.Event(nameof(Load),
+                "HANDICAP OFF: bots see only what they can actually see");
+        }
 
         bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
@@ -1064,6 +1361,7 @@ public class KaiBotTacticsPlugin : BasePlugin
         _tCover.Clear();
         _tWatchBearings.Clear();
         _glanceSet.Clear();
+        _glanceOrigin.Clear();
         _glanceIndex.Clear();
         _glanceNext.Clear();
         _transitSet.Clear();
@@ -1071,6 +1369,16 @@ public class KaiBotTacticsPlugin : BasePlugin
         _transitIndex.Clear();
         _transitNext.Clear();
         _transitFlick.Clear();
+        _routeBest.Clear();
+        _routeBestAt.Clear();
+        _routeStalls.Clear();
+        _pathing?.Clear();
+
+        // Built here rather than lazily on first use, so the retake director
+        // has its follower before the first plant of the map rather than
+        // whenever a T bot happens to be the first to want one.
+        Pathing();
+
         _retake.Reset("map start");
         _bombPlanted = false;
         _bombPos = null;
@@ -1095,6 +1403,7 @@ public class KaiBotTacticsPlugin : BasePlugin
         _tCover.Clear();
         _tWatchBearings.Clear();
         _glanceSet.Clear();
+        _glanceOrigin.Clear();
         _glanceIndex.Clear();
         _glanceNext.Clear();
         _transitSet.Clear();
@@ -1109,6 +1418,25 @@ public class KaiBotTacticsPlugin : BasePlugin
         _routeLeg.Clear();
         _routeFaking.Clear();
         _routeReversing.Clear();
+        _routeBest.Clear();
+        _routeBestAt.Clear();
+        _routeStalls.Clear();
+        _pathing?.Clear();
+
+        // A new round is a new journey. Nobody is mid-rotation, and any knife
+        // drawn for speed belongs to a round that is over.
+        _rotationStartDist.Clear();
+        _sprintingKnife.Clear();
+        _sprintSeen.Clear();
+        _overwatchPost.Clear();
+        _plantedAt = 0.0f;
+
+        // Last round's human position is last round's problem.
+        _trackedHuman = null;
+        _trackedHumanAt = 0.0f;
+        _trackedHumanTeam = -1;
+        _lastTrackedAttribution = 0.0f;
+
         _decoySite.Clear();
         _decoyUntil.Clear();
         _decoyEngaged.Clear();
@@ -1185,6 +1513,7 @@ public class KaiBotTacticsPlugin : BasePlugin
             // Everything downstream was derived from the old spots.
             _tCover.Clear();
             _glanceSet.Clear();
+            _glanceOrigin.Clear();
             _transitSet.Clear();
 
             // First time the book is built. Every bombsite has been seen by
@@ -1223,6 +1552,7 @@ public class KaiBotTacticsPlugin : BasePlugin
         _tCover.Clear();
         _tWatchBearings.Clear();
         _glanceSet.Clear();
+        _glanceOrigin.Clear();
         _glanceIndex.Clear();
         _glanceNext.Clear();
         _transitSet.Clear();
@@ -1256,6 +1586,7 @@ public class KaiBotTacticsPlugin : BasePlugin
         _tCover.Clear();
         _tWatchBearings.Clear();
         _glanceSet.Clear();
+        _glanceOrigin.Clear();
         _glanceIndex.Clear();
         _glanceNext.Clear();
         _transitSet.Clear();
@@ -1271,6 +1602,7 @@ public class KaiBotTacticsPlugin : BasePlugin
     private HookResult OnBombPlanted(EventBombPlanted @event, GameEventInfo info)
     {
         _bombPlanted = true;
+        _plantedAt = Server.CurrentTime;
         _looseBombPos = null;
         _tPressureUntil.Clear();
 
@@ -1301,6 +1633,12 @@ public class KaiBotTacticsPlugin : BasePlugin
         if (_maturity.BehavioursActive)
         {
             _retake.OnBombPlanted(bomb, _map, MaxSpotDistanceFromBomb);
+
+            // The rotation starts now, so every bot's journey is measured from
+            // where it was standing when the bomb went down. A baseline
+            // recorded before the plant would be measuring a walk to somewhere
+            // that was not yet the objective.
+            _rotationStartDist.Clear();
         }
 
         return HookResult.Continue;
@@ -1339,6 +1677,7 @@ public class KaiBotTacticsPlugin : BasePlugin
         _tCover.Clear();
         _tWatchBearings.Clear();
         _glanceSet.Clear();
+        _glanceOrigin.Clear();
         _glanceIndex.Clear();
         _glanceNext.Clear();
         _transitSet.Clear();
@@ -1440,11 +1779,33 @@ public class KaiBotTacticsPlugin : BasePlugin
         }
 
         float baseBearing = 0.0f;
+        string anchoredOn = "no threat points, defaulting to bearing zero";
 
         if (_threatPoints.Count > 0)
         {
             var first = _threatPoints[0];
             baseBearing = KaiFormation.Bearing(bomb.X, bomb.Y, first.X, first.Y);
+            anchoredOn = "the busiest known approach";
+        }
+
+        // Point the fan at the human when the handicap knows where they are.
+        //
+        // The sectors are an even fan around the bomb, and the only free
+        // choice is where the fan STARTS. Anchoring it on the bearing to the
+        // tracked human puts one defender's arc straight down the line they
+        // are coming from, and the rest spread away from that, so the side
+        // covers the real threat first and the theoretical ones after.
+        //
+        // Cheap, and it does not concentrate anybody: it rotates an existing
+        // even spread rather than collapsing it. Five defenders all facing the
+        // human would leave every other way in open, which for a retake is
+        // worse than facing nothing in particular.
+        var tracked = TrackedTargetFor((int)CsTeam.Terrorist);
+
+        if (tracked != null)
+        {
+            baseBearing = KaiFormation.Bearing(bomb.X, bomb.Y, tracked.X, tracked.Y);
+            anchoredOn = "the tracked human's bearing from the bomb";
         }
 
         var assigned = KaiFormation.AssignSectors(slots, baseBearing);
@@ -1456,7 +1817,7 @@ public class KaiBotTacticsPlugin : BasePlugin
 
         KaiLog.Event(nameof(AssignTerroristSectors),
             $"{slots.Count} defenders given {360.0f / slots.Count:F0} degree arcs, " +
-            $"fan anchored on bearing {baseBearing:F0}");
+            $"fan anchored on bearing {baseBearing:F0} from {anchoredOn}");
     }
 
     // Claim an approach for this defender.
@@ -1738,6 +2099,52 @@ public class KaiBotTacticsPlugin : BasePlugin
     // Bearing rather than distance, so the fan is preserved: five defenders
     // each take the best post in their own arc rather than the five best posts
     // overall, which would put them all on one side of the site.
+    // Can this position see any of the learned ways in?
+    //
+    // The threat points are built from CT clear anchors and CT-side pre-aim
+    // triggers near the bomb, deduplicated at 250 units, which is as close to
+    // "the five or six doorways the retake comes through" as the recorded data
+    // gets. A defender that can see one of them is holding an angle somebody
+    // has to walk into. A defender that can see none of them is decoration.
+    //
+    // Traced from chest height at both ends, and stopped at the first hit,
+    // because the question is whether ANY entry is covered rather than how
+    // many.
+    private bool PostSeesAnyEntry(KaiPoint post)
+    {
+        if (_threatPoints.Count == 0)
+        {
+            // No learned approaches on this map yet. Refusing every post would
+            // leave the whole side unassigned, so the test passes by default
+            // and bearing alone decides, as it did before.
+            return true;
+        }
+
+        var eye = new Vector(post.X, post.Y, post.Z + KaiHeights.Head);
+
+        for (int i = 0; i < _threatPoints.Count; i++)
+        {
+            var entry = _threatPoints[i];
+            var target = new Vector(entry.X, entry.Y, entry.Z + KaiHeights.Chest);
+
+            if (KaiRayTraceBridge.CanSee(eye, target))
+            {
+                KaiLog.Throttled($"postentry:{i}", nameof(PostSeesAnyEntry),
+                    $"a post at ({post.X:F0},{post.Y:F0}) watches approach {i} of " +
+                    $"{_threatPoints.Count}", 5.0f);
+
+                return true;
+            }
+        }
+
+        KaiLog.Throttled("postblind", nameof(PostSeesAnyEntry),
+            $"a post at ({post.X:F0},{post.Y:F0}) watches none of the " +
+            $"{_threatPoints.Count} known approaches and will only be taken if nothing " +
+            $"better is free", 5.0f);
+
+        return false;
+    }
+
     private KaiPoint? ClaimSolvedPost(CCSPlayerController player, KaiPoint bomb, float bearing)
     {
         if (_map.SolvedTPosts.Count == 0 || _map.PlantSites.Count == 0)
@@ -1774,10 +2181,28 @@ public class KaiBotTacticsPlugin : BasePlugin
         KaiSolvedPost? best = null;
         float bestGap = float.MaxValue;
 
+        int rejectedFar = 0;
+        int rejectedBlind = 0;
+        bool bestSeesEntry = false;
+
         foreach (var candidate in _map.SolvedTPosts)
         {
             if (candidate.SiteIndex != site)
             {
+                continue;
+            }
+
+            // A post is only a post if it defends the bomb.
+            //
+            // The solver works to an 1800 unit site radius, which is the right
+            // radius for "positions belonging to this site" and far too wide
+            // for "positions holding this plant". Measured on Mirage, six of
+            // sixteen occupied posts were 1315 to 1374 units from the bomb:
+            // not a ring around it, just bots standing somewhere else while
+            // the bomb was defused without them.
+            if (candidate.Position.DistanceXY(bomb.X, bomb.Y) > _tPostMaxBombDistance)
+            {
+                rejectedFar++;
                 continue;
             }
 
@@ -1787,11 +2212,38 @@ public class KaiBotTacticsPlugin : BasePlugin
                 continue;
             }
 
+            // Does this post watch one of the ways in?
+            //
+            // The threat points are the learned CT approaches: the doorways
+            // the retake will actually come through. A post covering one of
+            // them is holding an angle; a post covering none of them is
+            // holding a wall, however good its bearing looks.
+            bool seesEntry = PostSeesAnyEntry(candidate.Position);
+
+            if (!seesEntry)
+            {
+                rejectedBlind++;
+            }
+
             float gap = KaiFormation.AngleGap(candidate.Bearing, bearing);
 
-            if (gap < bestGap)
+            // Covering an entry beats a better bearing. Between two posts that
+            // both cover one, the closer bearing wins as before.
+            bool better;
+
+            if (seesEntry != bestSeesEntry)
+            {
+                better = seesEntry;
+            }
+            else
+            {
+                better = gap < bestGap;
+            }
+
+            if (better)
             {
                 bestGap = gap;
+                bestSeesEntry = seesEntry;
                 best = candidate;
             }
         }
@@ -1804,7 +2256,10 @@ public class KaiBotTacticsPlugin : BasePlugin
         KaiLog.Event(nameof(ClaimSolvedPost),
             $"slot {player.Slot} takes pre-solved post '{best.Name}' on site {site}, " +
             $"bearing {best.Bearing:F0} against its arc {bearing:F0} (gap {bestGap:F0}), " +
-            $"covering {best.Coverage} angle(s) from {best.Distance:F0} units out");
+            $"covering {best.Coverage} angle(s) from {best.Distance:F0} units out, " +
+            $"{best.Position.DistanceXY(bomb.X, bomb.Y):F0} from the bomb, " +
+            $"watchesEntry={bestSeesEntry} " +
+            $"(rejected {rejectedFar} too far from the bomb, {rejectedBlind} watching no entry)");
 
         return best.Position;
     }
@@ -2318,7 +2773,10 @@ public class KaiBotTacticsPlugin : BasePlugin
             _routeLeg.Remove(p.Slot);
             _routeReversing.Remove(p.Slot);
             _glanceSet.Remove(p.Slot);
+            _glanceOrigin.Remove(p.Slot);
             _transitSet.Remove(p.Slot);
+            ForgetRouteProgress(p.Slot);
+            _pathing?.Forget(p.Slot);
         }
 
         _retake.Reset("defuse watchdog");
@@ -2868,7 +3326,15 @@ public class KaiBotTacticsPlugin : BasePlugin
             // The dead bot's approach is free for someone else to claim.
             _tCover.Remove(victim.Slot);
             _glanceSet.Remove(victim.Slot);
+            _glanceOrigin.Remove(victim.Slot);
             _tWatchBearings.Remove(victim.Slot);
+
+            // Its rotation is over. No weapon to restore on a corpse, so the
+            // state is simply dropped rather than run through EndSprint.
+            _rotationStartDist.Remove(victim.Slot);
+            _sprintingKnife.Remove(victim.Slot);
+            _sprintSeen.Remove(victim.Slot);
+            _overwatchPost.Remove(victim.Slot);
 
             if (_tWatchClaims.Remove(victim.Slot))
             {
@@ -2938,6 +3404,7 @@ public class KaiBotTacticsPlugin : BasePlugin
                 // this bot no longer holds and a position it has left.
                 _tCover.Remove(bot.Slot);
                 _glanceSet.Remove(bot.Slot);
+                _glanceOrigin.Remove(bot.Slot);
                 _tWatchBearings.Remove(bot.Slot);
                 displaced.Add(bot.Slot);
             }
@@ -3173,6 +3640,8 @@ public class KaiBotTacticsPlugin : BasePlugin
             }
         }
 
+        SweepStaleSprints(now);
+
         if (!_defuseWatchdogTripped)
         {
             _retake.Tick(now, GetOrCreateIntent, _botController, supporting);
@@ -3297,6 +3766,7 @@ public class KaiBotTacticsPlugin : BasePlugin
             if (speedSqr > 2500.0f)
             {
                 _glanceSet.Remove(player.Slot);
+                _glanceOrigin.Remove(player.Slot);
 
                 KaiLog.Throttled($"glancemove:{player.Slot}", nameof(ApplyGlanceSweep),
                     $"slot {player.Slot} is moving, so it sweeps the way it is going rather " +
@@ -3316,6 +3786,40 @@ public class KaiBotTacticsPlugin : BasePlugin
             }
         }
 
+        // Score from where the bot IS, not from where it was told to stand.
+        //
+        // This is the bug behind bots holding a post and facing a wall. The
+        // covered set was traced from the assigned post's coordinates, and the
+        // bot holds from wherever the path follower stopped it, which is
+        // anywhere inside a 90 unit arrival radius. Ninety units is enough to
+        // put a doorframe between the bot's eye and an angle that was cleanly
+        // visible from the post, and the set was cached and never rechecked,
+        // so it faced that wall for the rest of the round.
+        //
+        // Measured over one session: only 3 of 32 defenders got within 120
+        // units of their assigned post, and the median post covers 11 angles,
+        // so there was ample scope for the chosen one to be the blocked one.
+        var standing = pawn.AbsOrigin;
+
+        if (standing != null)
+        {
+            position = new KaiPoint(standing.X, standing.Y, standing.Z);
+        }
+
+        // Recompute if the bot has drifted away from wherever the set was
+        // scored. Cheap: it only fires when a bot has genuinely moved.
+        if (_glanceOrigin.TryGetValue(player.Slot, out var scoredAt)
+            && scoredAt.DistanceXY(position.X, position.Y) > _glanceRescoreDistance)
+        {
+            _glanceSet.Remove(player.Slot);
+            _glanceOrigin.Remove(player.Slot);
+
+            KaiLog.Throttled($"glancemoved:{player.Slot}", nameof(ApplyGlanceSweep),
+                $"slot {player.Slot} has moved " +
+                $"{scoredAt.DistanceXY(position.X, position.Y):F0} units from where its " +
+                $"angles were scored, so they are scored again", 5.0f);
+        }
+
         if (!_glanceSet.TryGetValue(player.Slot, out var visible))
         {
             visible = new List<int>();
@@ -3323,6 +3827,7 @@ public class KaiBotTacticsPlugin : BasePlugin
             CoverageScore(position, pawn.ViewOffset.Z, (int)player.TeamNum, visible);
 
             _glanceSet[player.Slot] = visible;
+            _glanceOrigin[player.Slot] = position;
             _glanceIndex[player.Slot] = 0;
             _glanceNext[player.Slot] = now + _glanceDwell;
 
@@ -3350,12 +3855,103 @@ public class KaiBotTacticsPlugin : BasePlugin
 
         int spotIndex = visible[cursor % visible.Count];
 
+        // Stop sweeping and settle on the angle covering the tracked human.
+        //
+        // This is where the handicap does its work after the plant. The
+        // pre-aim bias in ApplyPreAim cannot help here: it returns early for
+        // CTs once the bomb is down, and the T post-plant hold aims through
+        // this sweep instead, so the whole post-plant phase was getting no
+        // benefit from the tracking at all. Measured on Mirage against a CT
+        // human: the bias fired 69 times in 659 tracked seconds, none of it
+        // during a retake, which is exactly when a repeated hiding spot pays
+        // the human most.
+        //
+        // Settling rather than sweeping is the point. A bot cycling twenty
+        // angles every 0.4 seconds is looking at the right one 5% of the time.
+        // A bot that has stopped on the one covering the human is looking at
+        // the doorway before they come through it, which is what a good
+        // opponent does and what the bots cannot work out for themselves.
+        //
+        // Nothing moves. The bot holds the post it was already holding.
+        var human = TrackedTargetFor((int)player.TeamNum);
+
+        if (human != null)
+        {
+            int best = -1;
+            float bestGap = _trackedPreAimRadius;
+
+            foreach (int candidate in visible)
+            {
+                if (candidate < 0 || candidate >= _map.PreAim.Count)
+                {
+                    continue;
+                }
+
+                var option = _map.PreAim[candidate];
+                float gap = option.Watch.DistanceXY(human.X, human.Y);
+
+                if (gap < bestGap)
+                {
+                    bestGap = gap;
+                    best = candidate;
+                }
+            }
+
+            if (best >= 0)
+            {
+                spotIndex = best;
+
+                KaiLog.Throttled($"glancebias:{player.Slot}", nameof(ApplyGlanceSweep),
+                    $"slot {player.Slot} has stopped sweeping and settled on spot {best}, " +
+                    $"which watches within {bestGap:F0} units of the tracked human", 4.0f);
+            }
+        }
+
         if (spotIndex < 0 || spotIndex >= _map.PreAim.Count)
         {
             return false;
         }
 
         var spot = _map.PreAim[spotIndex];
+
+        // Last check before committing the crosshair to it.
+        //
+        // Everything above says this angle should be visible. This confirms it
+        // is, from this bot's actual eye, this tick. A blocked angle is struck
+        // out of the set so the sweep never returns to it, and the tick falls
+        // through to the caller's own fallback rather than aiming into
+        // masonry. Self-healing: a set that was scored somewhere slightly
+        // wrong prunes itself within a few sweeps.
+        var eyeNow = pawn.AbsOrigin;
+
+        if (eyeNow != null)
+        {
+            var from = new Vector(eyeNow.X, eyeNow.Y, eyeNow.Z + pawn.ViewOffset.Z);
+            var to = new Vector(
+                spot.Trigger.X, spot.Trigger.Y, spot.Trigger.Z + KaiHeights.Chest);
+
+            if (!KaiRayTraceBridge.CanSee(from, to))
+            {
+                visible.Remove(spotIndex);
+
+                // Keep the cursor inside the shortened list.
+                if (visible.Count > 0)
+                {
+                    _glanceIndex[player.Slot] = cursor % visible.Count;
+                }
+                else
+                {
+                    _glanceSet.Remove(player.Slot);
+                    _glanceOrigin.Remove(player.Slot);
+                }
+
+                KaiLog.Throttled($"glanceblocked:{player.Slot}", nameof(ApplyGlanceSweep),
+                    $"slot {player.Slot} cannot actually see pre-aim spot {spotIndex} from " +
+                    $"where it is standing, dropping it. {visible.Count} angle(s) left.", 3.0f);
+
+                return false;
+            }
+        }
 
         intent.Watch = new KaiPoint(
             spot.Trigger.X, spot.Trigger.Y, spot.Trigger.Z + KaiHeights.Chest);
@@ -3367,6 +3963,439 @@ public class KaiBotTacticsPlugin : BasePlugin
 
         return true;
     }
+    // Run the first half of a post-plant rotation instead of clearing it.
+    //
+    // Returns true when this bot is sprinting, in which case the watch target
+    // has been written and the caller must NOT run transit clearing. Returns
+    // false when the bot should approach carefully, which is the old
+    // behaviour.
+    //
+    // WHY THE SPLIT IS BY FRACTION AND NOT BY A FIXED RANGE
+    //
+    // Half the journey means half of THIS bot's journey. A bot caught in spawn
+    // when the bomb goes down and a bot fifty units outside the site have
+    // wildly different amounts of empty map in front of them, and a single
+    // distance threshold would either make the first one careful far too early
+    // or the second one reckless right up to the ring.
+    //
+    // The danger radius is the floor under that. However long the journey, the
+    // last stretch into the defence is always walked properly, because that is
+    // where somebody is actually waiting.
+    private bool ApplyRotationSprint(
+        CCSPlayerController player, CCSPlayerPawn pawn, Vector origin, KaiBotIntent intent)
+    {
+        if (!_rotationSprint || !_bombPlanted || _bombPos == null)
+        {
+            EndSprint(player, "no post-plant rotation in progress");
+            return false;
+        }
+
+        // Anything that has found a fight stops running immediately. A knife
+        // is not an answer to somebody shooting at you, and the corner-clearing
+        // this replaces is exactly what should happen once contact is likely.
+        var bot = pawn.Bot;
+
+        if (bot != null && (bot.IsEnemyVisible || bot.IsAttacking))
+        {
+            EndSprint(player, "contact");
+            return false;
+        }
+
+        if (IsUnderPressure(player.Slot, Server.CurrentTime))
+        {
+            EndSprint(player, "under fire");
+            return false;
+        }
+
+        // A dry bot's weapon state belongs to the arsenal. Leave it alone
+        // rather than fighting it over which slot is selected.
+        if (_arsenal.IsKnifing(player.Slot))
+        {
+            return false;
+        }
+
+        float toBomb = _bombPos.DistanceXY(origin.X, origin.Y);
+
+        // Remember where this rotation started, once.
+        if (!_rotationStartDist.TryGetValue(player.Slot, out float startedAt))
+        {
+            startedAt = toBomb;
+            _rotationStartDist[player.Slot] = startedAt;
+        }
+        else if (toBomb > startedAt)
+        {
+            // Further out than when it started, which means this is a new
+            // journey rather than the one being measured. Re-baseline instead
+            // of treating it as progress made backwards.
+            startedAt = toBomb;
+            _rotationStartDist[player.Slot] = startedAt;
+        }
+
+        float halfway = startedAt * _sprintFraction;
+        float threshold = MathF.Max(halfway, _sprintDangerRadius);
+
+        if (toBomb <= threshold)
+        {
+            EndSprint(player,
+                $"within {toBomb:F0} units of the bomb, past the {threshold:F0} unit mark");
+
+            return false;
+        }
+
+        // Running. Knife out for the movement speed, and look where it is
+        // going rather than at the corners it is passing.
+        if (_sprintingKnife.Add(player.Slot))
+        {
+            KaiLog.Event(nameof(ApplyRotationSprint),
+                $"slot {player.Slot} is {toBomb:F0} units from the bomb having started at " +
+                $"{startedAt:F0}. Knife out and running until {threshold:F0}, then it will " +
+                $"start clearing corners properly.");
+        }
+
+        try
+        {
+            player.ExecuteClientCommand("slot3");
+        }
+        catch (Exception ex)
+        {
+            KaiLog.Throttled($"sprintknife:{player.Slot}", nameof(ApplyRotationSprint),
+                $"could not switch to the knife: {ex.Message}", 30.0f, KaiLogLevel.Error);
+        }
+
+        intent.Walk = false;
+        intent.Crouch = false;
+
+        // Eyes down the direction of travel. Not at a pre-aim spot, not at the
+        // next waypoint: a bot running flat out wants to see what is in front
+        // of it, and TravelHeading already knows which way that is even under
+        // native pathing.
+        float heading = TravelHeading(player, pawn, origin);
+        float radians = heading * MathF.PI / 180.0f;
+
+        intent.Watch = new KaiPoint(
+            origin.X + (MathF.Cos(radians) * 600.0f),
+            origin.Y + (MathF.Sin(radians) * 600.0f),
+            origin.Z + KaiHeights.Chest);
+
+        _sprintSeen[player.Slot] = Server.CurrentTime;
+
+        KaiLog.Throttled($"sprint:{player.Slot}", nameof(ApplyRotationSprint),
+            $"slot {player.Slot} running back to the bomb, {toBomb:F0} units to go, " +
+            $"clearing starts at {threshold:F0}", 3.0f);
+
+        return true;
+    }
+
+    // Hold a line onto the bomb from outside the site, for a defender that has
+    // arrived too late to be part of the ring.
+    //
+    // Returns true when this bot is on overwatch, in which case its intent has
+    // been written and the ring logic must not run.
+    //
+    // HOW THE POSITION IS CHOSEN
+    //
+    // It is not chosen. It is arrived at.
+    //
+    // Searching the map for an ideal overwatch position would mean tracing
+    // hundreds of candidate nodes against the bomb, and the answer would be a
+    // position somewhere the bot then has to walk to, which is the same
+    // mistake the ring posts made. Instead the bot keeps advancing along the
+    // route it was already on and tests one thing every tick: can it see the
+    // bomb from here, and is it within holding range of it. The first place
+    // both are true is where it stops.
+    //
+    // That is exactly the instruction a person would give. Get close enough
+    // that you can see the bomb, then stop and hold that line.
+    private bool ApplyOverwatch(
+        CCSPlayerController player, CCSPlayerPawn pawn, Vector origin, float now,
+        KaiBotIntent intent)
+    {
+        if (!_overwatchEnabled || !_bombPlanted || _bombPos == null)
+        {
+            return false;
+        }
+
+        float toBomb = _bombPos.DistanceXY(origin.X, origin.Y);
+
+        // Already settled. Hold what it found.
+        if (_overwatchPost.TryGetValue(player.Slot, out var settled))
+        {
+            // Whatever it drew for the run back, it needs its gun now. The
+            // sprint sweep would get there within half a second anyway, but a
+            // bot that has just settled onto a firing line should not spend
+            // even that long holding a knife.
+            EndSprint(player, "settled onto an overwatch line");
+
+            return HoldOverwatch(player, pawn, origin, now, intent, settled, toBomb);
+        }
+
+        float sincePlant = now - _plantedAt;
+
+        if (sincePlant < _overwatchLateSeconds)
+        {
+            return false;
+        }
+
+        if (toBomb < _overwatchMinBombDistance)
+        {
+            // Near enough that it may as well take a proper post. The ring
+            // logic is the better answer for a bot that is basically there.
+            return false;
+        }
+
+        float range = KaiArsenal.HoldingRangeFor(player);
+
+        // Look along the way it is going for the first place its line to the
+        // bomb opens up inside its weapon's holding band.
+        var found = FindOverwatchAhead(player, pawn, origin, range, out float foundAt);
+
+        if (found == null)
+        {
+            KaiLog.Throttled($"owclose:{player.Slot}", nameof(ApplyOverwatch),
+                $"slot {player.Slot} is late and {toBomb:F0} units out with no clear line " +
+                $"to the bomb anywhere in the next {_overwatchLookahead:F0} units, " +
+                $"still closing", 3.0f);
+
+            return false;
+        }
+
+        var here = found;
+        toBomb = foundAt;
+        _overwatchPost[player.Slot] = here;
+
+        KaiComms.CallBy(player.Slot, $"overwatch:{player.Slot}",
+            "too late for the site, holding a line onto the bomb from out here", 12.0f);
+
+        KaiLog.Event(nameof(ApplyOverwatch),
+            $"slot {player.Slot} arrived {sincePlant:F0}s after the plant, too late for the " +
+            $"ring. It has stopped {toBomb:F0} units out with a clear line to the bomb, " +
+            $"holding range for its weapon being {range:F0}. It watches the bomb from here " +
+            $"rather than walking into a fight already in progress.");
+
+        return HoldOverwatch(player, pawn, origin, now, intent, here, toBomb);
+    }
+
+    // Walk forward in the mind's eye until the bomb comes into view.
+    //
+    // Samples points along the direction the bot is already travelling, at
+    // _overwatchProbeStep intervals out to _overwatchLookahead, and returns
+    // the first one that satisfies all three conditions at once: inside the
+    // weapon's holding band, standing on ground the recorder has seen, and
+    // with an unobstructed line to the bomb.
+    //
+    // Testing the bot's own position instead, which is what this replaces,
+    // could only ever succeed if the line happened to open exactly while the
+    // bot was inside the band. On real maps it usually opens later than that,
+    // by which point the bot is inside the ring and no longer a candidate.
+    //
+    // Cost is bounded: six probes at 200 units over 1200, each one cheap
+    // rejection first and at most two traces. Only late bots that are still
+    // closing ever reach this.
+    private KaiPoint? FindOverwatchAhead(
+        CCSPlayerController player, CCSPlayerPawn pawn, Vector origin, float range,
+        out float bombDistanceAtPost)
+    {
+        bombDistanceAtPost = 0.0f;
+
+        if (_bombPos == null)
+        {
+            return null;
+        }
+
+        float floor = range * (1.0f - _overwatchRangeTolerance);
+        float heading = TravelHeading(player, pawn, origin);
+        float radians = heading * MathF.PI / 180.0f;
+
+        float dx = MathF.Cos(radians);
+        float dy = MathF.Sin(radians);
+
+        float eyeHeight = pawn.ViewOffset.Z;
+
+        var bombTarget = new Vector(
+            _bombPos.X, _bombPos.Y, _bombPos.Z + KaiHeights.BombWatch);
+
+        for (float step = 0.0f; step <= _overwatchLookahead; step += _overwatchProbeStep)
+        {
+            var probe = new KaiPoint(
+                origin.X + (dx * step),
+                origin.Y + (dy * step),
+                origin.Z);
+
+            float probeToBomb = _bombPos.DistanceXY(probe.X, probe.Y);
+
+            // Still too far out for this weapon. Keep walking the probe
+            // forward rather than giving up.
+            if (probeToBomb > range)
+            {
+                continue;
+            }
+
+            // Past the near edge of the band and inside the ring. Everything
+            // further along is closer still, so there is nothing left to find.
+            if (probeToBomb < floor && probeToBomb < _tPostMaxBombDistance)
+            {
+                break;
+            }
+
+            // Is the probe somewhere a bot could actually stand? A point 800
+            // units down a heading can be inside a wall, and settling on one
+            // would send the bot to a position it can never reach.
+            if (step > 0.0f
+                && (!_crumbs.IsUsable
+                    || !_crumbs.IsReachable(probe.X, probe.Y, probe.Z, _snapRadii[0])))
+            {
+                continue;
+            }
+
+            var probeEye = new Vector(probe.X, probe.Y, probe.Z + eyeHeight);
+
+            if (!KaiRayTraceBridge.CanSee(probeEye, bombTarget))
+            {
+                continue;
+            }
+
+            // The bot also has to be able to get there. A clear line from
+            // where it stands to the probe is not a path, but it rules out
+            // probes on the far side of the wall it is currently behind.
+            if (step > 0.0f)
+            {
+                var fromEye = new Vector(origin.X, origin.Y, origin.Z + eyeHeight);
+
+                if (!KaiRayTraceBridge.CanSee(fromEye, probeEye))
+                {
+                    continue;
+                }
+            }
+
+            bombDistanceAtPost = probeToBomb;
+
+            KaiLog.Event(nameof(FindOverwatchAhead),
+                $"slot {player.Slot} found its overwatch line {step:F0} units ahead on " +
+                $"heading {heading:F0}: from there the bomb is visible at " +
+                $"{probeToBomb:F0} units, inside the {floor:F0} to {range:F0} band for " +
+                $"the weapon it is carrying");
+
+            return probe;
+        }
+
+        return null;
+    }
+
+    // Sit still and watch the bomb.
+    //
+    // Deliberately simpler than the ring hold. There is no sweeping between
+    // angles here: the whole value of this position is that it covers the one
+    // place a defuser has to stand, and a bot that looks away from it to check
+    // a corridor has given up the only thing it was contributing.
+    private bool HoldOverwatch(
+        CCSPlayerController player, CCSPlayerPawn pawn, Vector origin, float now,
+        KaiBotIntent intent, KaiPoint post, float toBomb)
+    {
+        if (_bombPos == null)
+        {
+            return false;
+        }
+
+        float drift = post.DistanceXY(origin.X, origin.Y);
+
+        if (drift > 90.0f)
+        {
+            // Pushed or wandered off the line it chose. Walk back rather than
+            // holding an angle from somewhere that no longer has it.
+            var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+            Pathing().Steer(player.Slot, here, post, now, intent, "overwatch");
+
+            intent.SourceName = "overwatch:return";
+            intent.Watch = new KaiPoint(
+                _bombPos.X, _bombPos.Y, _bombPos.Z + KaiHeights.BombWatch);
+
+            KaiLog.Throttled($"owreturn:{player.Slot}", nameof(HoldOverwatch),
+                $"slot {player.Slot} has drifted {drift:F0} units off its overwatch line, " +
+                $"returning to it", 3.0f);
+
+            return true;
+        }
+
+        Pathing().Forget(player.Slot);
+
+        intent.Anchored = true;
+        intent.Crouch = true;
+        intent.SourceName = "overwatch:hold";
+        intent.Watch = new KaiPoint(
+            _bombPos.X, _bombPos.Y, _bombPos.Z + KaiHeights.BombWatch);
+
+        KaiLog.Throttled($"overwatch:{player.Slot}", nameof(HoldOverwatch),
+            $"slot {player.Slot} holding its line onto the bomb from {toBomb:F0} units out",
+            4.0f);
+
+        return true;
+    }
+
+    // End any sprint that has stopped being confirmed.
+    //
+    // A bot claimed by a higher layer stops going through ApplyRotationSprint
+    // entirely, so nothing would otherwise put its gun back. Running once a
+    // tick over a set that is empty almost all the time costs nothing.
+    private void SweepStaleSprints(float now)
+    {
+        if (_sprintingKnife.Count == 0)
+        {
+            return;
+        }
+
+        // Copied, because EndSprint mutates the set being read.
+        var slots = new List<int>(_sprintingKnife);
+
+        foreach (int slot in slots)
+        {
+            float seen = _sprintSeen.GetValueOrDefault(slot, 0.0f);
+
+            if (now - seen <= SprintStaleSeconds)
+            {
+                continue;
+            }
+
+            var player = Utilities.GetPlayerFromSlot(slot);
+
+            if (player == null || !player.IsValid || !player.PawnIsAlive)
+            {
+                // Nothing to restore a weapon on. Drop the state directly.
+                _sprintingKnife.Remove(slot);
+                _sprintSeen.Remove(slot);
+                _rotationStartDist.Remove(slot);
+
+                continue;
+            }
+
+            EndSprint(player, "something else took over this bot mid-rotation");
+        }
+    }
+
+    // Put the gun back and stop treating this bot as sprinting.
+    //
+    // Idempotent, and safe to call on a bot that was never sprinting, which is
+    // most of them most of the time. Deliberately does not touch a bot the
+    // arsenal has knifing: that one is dry and its knife is the only weapon it
+    // has.
+    private void EndSprint(CCSPlayerController player, string why)
+    {
+        _sprintSeen.Remove(player.Slot);
+
+        if (!_sprintingKnife.Remove(player.Slot))
+        {
+            return;
+        }
+
+        if (!_arsenal.IsKnifing(player.Slot))
+        {
+            RestoreBestWeapon(player);
+        }
+
+        KaiLog.Event(nameof(EndSprint),
+            $"slot {player.Slot} has stopped running and drawn its gun again ({why})");
+    }
+
     // Which way this bot is actually travelling.
     //
     // Three sources, in order of how much they can be trusted.
@@ -3886,10 +4915,47 @@ public class KaiBotTacticsPlugin : BasePlugin
 
         if (inFight)
         {
-            return KnifeRush(player, pawn, origin, now);
+            // Close enough for the knife to be a chance rather than a walk to
+            // the grave.
+            //
+            // There used to be no distance test at all: any visible enemy
+            // triggered a charge. That is right at 200 units and suicide at
+            // 1500, and the logs had plenty of the latter. Beyond the range
+            // the bot breaks off and goes for a gun instead, which is both a
+            // better use of the time and the only way it wins the next duel.
+            float gap = float.MaxValue;
+
+            var chargeEnemy = bot?.Enemy?.Value;
+            var chargeOrigin = chargeEnemy?.AbsOrigin;
+
+            if (chargeOrigin != null)
+            {
+                float dx = chargeOrigin.X - origin.X;
+                float dy = chargeOrigin.Y - origin.Y;
+                gap = MathF.Sqrt((dx * dx) + (dy * dy));
+            }
+
+            if (gap <= _arsenal.KnifeRushRange)
+            {
+                return KnifeRush(player, pawn, origin, now);
+            }
+
+            KaiLog.Throttled($"knifefar:{player.Slot}", nameof(ApplyResupply),
+                $"slot {player.Slot} is dry with an enemy {gap:F0} units away, too far to " +
+                $"knife. Breaking off for a gun instead.", 4.0f);
+
+            // Put the gun back if it drew a knife on an earlier, closer
+            // contact. An empty rifle is no use either, but it is what the
+            // native weapon logic expects to be holding and it is not a
+            // commitment to charge anybody.
+            if (_arsenal.IsKnifing(player.Slot))
+            {
+                _arsenal.StopKnifing(player.Slot);
+                RestoreBestWeapon(player);
+            }
         }
 
-        // Clear. Go and get something.
+        // Clear, or in a fight it has sensibly declined. Go and get something.
         if (_arsenal.IsKnifing(player.Slot))
         {
             _arsenal.StopKnifing(player.Slot);
@@ -4076,6 +5142,25 @@ public class KaiBotTacticsPlugin : BasePlugin
 
         float bombDist = _bombPos.DistanceXY(origin.X, origin.Y);
 
+        // Too late to be part of the ring?
+        //
+        // Deliberately checked BEFORE the near-bomb gate below, not after.
+        // That gate asks whether a bot is close enough to join the ring, and a
+        // bot that fails it is exactly the bot this is for. Checking after it
+        // would have excluded every candidate: the gate is 1600 units and a
+        // rifle wants to hold from 1400 while a Negev wants 1800, so an LMG
+        // carrier could never legally reach its own holding range.
+        //
+        // Returns false while the bot is still too far out for its weapon, so
+        // the route follower keeps driving it forward and this is asked again
+        // next tick until the line opens up.
+        var lateIntent = GetOrCreateIntent(player.Slot);
+
+        if (ApplyOverwatch(player, pawn, origin, now, lateIntent))
+        {
+            return true;
+        }
+
         if (bombDist > _tHoldNearBombRadius)
         {
             return false;
@@ -4126,18 +5211,50 @@ public class KaiBotTacticsPlugin : BasePlugin
 
         float toPost = post.DistanceXY(origin.X, origin.Y);
 
+        // Walk to the post, do not lean towards it.
+        //
+        // This was a bare SteerTowards, which is a shove with no obstacle
+        // avoidance, and the posts it was shoving at were regularly on the far
+        // side of something. Measured over three sessions: 191 lines of
+        // "moving to its ring post" against 13 of "holding its ring post", and
+        // of 28 approach runs only 3 ever got within 120 units of the post
+        // they had been assigned. Ten of them finished further away than they
+        // started.
+        //
+        // A post is nothing until somebody is standing on it, so the approach
+        // is now pathed like any other.
+        //
+        // Arrival is the follower's decision rather than a second threshold of
+        // this function's own. Two different radii would leave a band where
+        // the bot is too near for the follower to steer it and too far for
+        // this to anchor it, which is a bot with no instruction at all.
+        bool travelling = false;
+
         if (toPost > 60.0f)
         {
-            intent.SteerTowards = post;
+            var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+            travelling = Pathing().Steer(
+                player.Slot, here, post, now, intent, $"t_hold:{bearing:F0}");
+        }
+
+        if (travelling)
+        {
             intent.SourceName = "t_hold:to_post";
 
-            // Clear the angles crossed on the way rather than staring at the
-            // destination. Falls back to watching the bomb when there is no
-            // known angle in view.
-            if (!ApplyTransitClearing(player, pawn, origin, intent))
+            // Same split as the route follower. A T caught away from the site
+            // when its own team plants has exactly the same problem as a
+            // rotating CT: a long walk across empty map, and a clock.
+            if (!ApplyRotationSprint(player, pawn, origin, intent))
             {
-                intent.Watch = new KaiPoint(
-                    _bombPos.X, _bombPos.Y, _bombPos.Z + KaiHeights.BombWatch);
+                // Clear the angles crossed on the way rather than staring at
+                // the destination. Falls back to watching the bomb when there
+                // is no known angle in view.
+                if (!ApplyTransitClearing(player, pawn, origin, intent))
+                {
+                    intent.Watch = new KaiPoint(
+                        _bombPos.X, _bombPos.Y, _bombPos.Z + KaiHeights.BombWatch);
+                }
             }
 
             KaiLog.Throttled($"tpost:{player.Slot}", nameof(ApplyTerroristHold),
@@ -4146,6 +5263,10 @@ public class KaiBotTacticsPlugin : BasePlugin
 
             return true;
         }
+
+        // Arrived. The follower keeps no state for a bot that is standing
+        // still, so the leg is dropped rather than left to go stale.
+        Pathing().Forget(player.Slot);
 
         intent.Anchored = true;
         intent.SourceName = "t_hold:ring";
@@ -4385,6 +5506,7 @@ public class KaiBotTacticsPlugin : BasePlugin
         // Any live assignments were computed under the old data.
         _tCover.Clear();
         _glanceSet.Clear();
+        _glanceOrigin.Clear();
 
         string message =
             $"solve complete: {_map.SolvedTPosts.Count} T post(s) across " +
@@ -4433,6 +5555,13 @@ public class KaiBotTacticsPlugin : BasePlugin
         _routeLeg.Clear();
         _routeFaking.Clear();
         _routeReversing.Clear();
+        _routeBest.Clear();
+        _routeBestAt.Clear();
+        _routeStalls.Clear();
+
+        // The solved approach paths were solved to waypoints that no longer
+        // exist, so they go with the book that produced them.
+        _pathing?.Clear();
     }
 
     private bool StartSolve(int team, int siteIndex)
@@ -5117,11 +6246,30 @@ public class KaiBotTacticsPlugin : BasePlugin
             .Where(r => !_routeOf.Values.Any(taken => taken.Name == r.Name))
             .ToList();
 
-        var pool = free.Count > 0 ? free : candidates;
+        List<KaiRoute> pool;
+
+        if (free.Count > 0)
+        {
+            pool = free;
+        }
+        else
+        {
+            pool = candidates;
+        }
 
         var chosen = pool[_routeRandom.Next(pool.Count)];
 
-        _routeOf[player.Slot] = chosen;
+        // Fit the route to where the bot actually is before handing it over.
+        //
+        // A route is a fixed path between two fixed endpoints. The bot being
+        // given it is wherever it happens to be standing, which is very often
+        // not the start of that path, and the follower used to send it back to
+        // waypoint zero regardless. Fitting picks the waypoint the bot should
+        // really join at and, when that is still some way off, prepends a
+        // solved approach to it.
+        var fitted = FitRouteToBot(player, chosen);
+
+        _routeOf[player.Slot] = fitted;
         _routeLeg[player.Slot] = 0;
         _routeReversing[player.Slot] = false;
 
@@ -5129,17 +6277,151 @@ public class KaiBotTacticsPlugin : BasePlugin
         // and handled in DriveTeamRotation.
         _routeFaking[player.Slot] = false;
 
+        // Any stall history belongs to the route this bot was on before, not
+        // to this one.
+        ForgetRouteProgress(player.Slot);
+
         if (kind == KaiRouteKind.Rotate && _rotation != null)
         {
             _rotation.Members.Add(player.Slot);
         }
 
         KaiLog.Event(nameof(PickRoute),
-            $"slot {player.Slot} takes route '{chosen.Name}' ({kind}, {chosen.Waypoints.Count} " +
-            $"waypoints, {chosen.Length:F0} units, covers {chosen.Coverage} angle(s)), " +
-            $"{pool.Count} candidate(s) considered");
+            $"slot {player.Slot} takes route '{chosen.Name}' ({kind}, " +
+            $"{fitted.Waypoints.Count} waypoints after fitting from " +
+            $"{chosen.Waypoints.Count} in the book, {chosen.Length:F0} units, covers " +
+            $"{chosen.Coverage} angle(s)), {pool.Count} candidate(s) considered");
 
-        return chosen;
+        return fitted;
+    }
+
+    // Build this bot's own copy of a route, starting where it makes sense for
+    // this bot to start.
+    //
+    // Two things happen here. The join point is the nearest waypoint rather
+    // than always the first, so a bot already halfway along a path is not sent
+    // back to the beginning of it. And when the join point is further off than
+    // the approach distance, a solved path from the bot to that waypoint is
+    // prepended, so the bot walks to the route instead of being shoved at it
+    // through whatever is in between.
+    //
+    // The copy keeps the original Name. Everything else keys off that: the
+    // "is anybody already on this route" check in PickRoute, the converge
+    // route prefix test, and the log lines that make a round readable
+    // afterwards.
+    private KaiRoute FitRouteToBot(CCSPlayerController player, KaiRoute route)
+    {
+        var origin = player.PlayerPawn?.Value?.AbsOrigin;
+
+        if (origin == null || route.Waypoints.Count == 0)
+        {
+            // Still a copy, never the book's own object. The stall check
+            // splices waypoints into whatever route a bot is running, and
+            // handing out the shared instance would edit the route book in
+            // memory for every other bot that ever takes this route.
+            return CopyRoute(route, new List<KaiPoint>(route.Waypoints));
+        }
+
+        var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+        // Nearest waypoint, weighted on height so a route on the floor above
+        // does not look close from directly underneath it.
+        int join = 0;
+        float bestDist = float.MaxValue;
+
+        for (int i = 0; i < route.Waypoints.Count; i++)
+        {
+            var waypoint = route.Waypoints[i];
+
+            float flat = waypoint.DistanceXY(here.X, here.Y);
+            float rise = MathF.Abs(waypoint.Z - here.Z);
+            float weighted = flat + (rise * 2.0f);
+
+            if (weighted < bestDist)
+            {
+                bestDist = weighted;
+                join = i;
+            }
+        }
+
+        var tail = new List<KaiPoint>();
+
+        for (int i = join; i < route.Waypoints.Count; i++)
+        {
+            tail.Add(route.Waypoints[i]);
+        }
+
+        float gap = route.Waypoints[join].DistanceXY(here.X, here.Y);
+
+        var waypoints = new List<KaiPoint>();
+
+        if (gap > _routeApproachDistance)
+        {
+            var approach = SolvePath(here, route.Waypoints[join]);
+
+            if (approach != null && approach.Count > 0)
+            {
+                waypoints.AddRange(approach);
+
+                KaiLog.Event(nameof(FitRouteToBot),
+                    $"slot {player.Slot} joins '{route.Name}' at waypoint {join + 1} of " +
+                    $"{route.Waypoints.Count}, {gap:F0} units off, walking a solved " +
+                    $"{approach.Count} node approach to get there");
+            }
+            else
+            {
+                KaiLog.Event(nameof(FitRouteToBot),
+                    $"slot {player.Slot} joins '{route.Name}' at waypoint {join + 1} of " +
+                    $"{route.Waypoints.Count} but is {gap:F0} units off with no path to it. " +
+                    $"It will steer straight at the waypoint and the stall check will pick " +
+                    $"it up if the ground is not clear.");
+            }
+        }
+        else if (join > 0)
+        {
+            KaiLog.Event(nameof(FitRouteToBot),
+                $"slot {player.Slot} is already {join} waypoint(s) along '{route.Name}', " +
+                $"joining there rather than walking back to the start");
+        }
+
+        waypoints.AddRange(tail);
+
+        if (waypoints.Count == 0)
+        {
+            return CopyRoute(route, new List<KaiPoint>(route.Waypoints));
+        }
+
+        return CopyRoute(route, waypoints);
+    }
+
+    // A route with the same identity but its own waypoint list.
+    //
+    // The Name is deliberately kept: the "is anybody already on this route"
+    // test in PickRoute, the converge route prefix check, and every log line
+    // that makes a round readable afterwards all key off it.
+    private static KaiRoute CopyRoute(KaiRoute route, List<KaiPoint> waypoints)
+    {
+        return new KaiRoute
+        {
+            Name = route.Name,
+            Kind = route.Kind,
+            Team = route.Team,
+            FromSite = route.FromSite,
+            ToSite = route.ToSite,
+            Waypoints = waypoints,
+            Length = route.Length,
+            Coverage = route.Coverage,
+            GeneratedUtc = route.GeneratedUtc,
+        };
+    }
+
+    // Drop the stall history for a bot, so a new route or a new leg starts
+    // with a clean measurement rather than inheriting the last one's.
+    private void ForgetRouteProgress(int slot)
+    {
+        _routeBest.Remove(slot);
+        _routeBestAt.Remove(slot);
+        _routeStalls.Remove(slot);
     }
 
     // Order a whole team to rotate, deciding up front whether it is real.
@@ -5467,6 +6749,126 @@ public class KaiBotTacticsPlugin : BasePlugin
             $"live path graph rebuilt over {_crumbs.NodeCount} breadcrumb nodes");
 
         return _liveGraph;
+    }
+
+    // Walkable nodes between two arbitrary world points, or null when there
+    // is no path between them.
+    //
+    // This is the single place the A* over breadcrumbs is called from. It
+    // used to be inline in ConvergeOnLooseBomb and nowhere else, which is why
+    // every other destination in the plugin was reached, or not reached, by
+    // shoving the bot in a straight line at it.
+    //
+    // Both ends are snapped onto the graph first. The snap radius is generous
+    // because a bot standing in a doorway the recorder never sampled is still
+    // a bot that has to get somewhere.
+    private List<KaiPoint>? SolvePath(KaiPoint from, KaiPoint to)
+    {
+        // Traced from roughly eye height above the start. Chest height would
+        // clip the floor on a slope and report every candidate as unseen.
+        var eye = new KaiPoint(from.X, from.Y, from.Z + KaiHeights.Head);
+
+        var graph = LiveGraph();
+
+        if (graph == null)
+        {
+            KaiLog.Throttled("nopathgraph", nameof(SolvePath),
+                "no usable breadcrumb graph, so nothing can be pathed and every " +
+                "destination is being steered at directly", 30.0f);
+
+            return null;
+        }
+
+        // Snap both ends, widening until something is found.
+        //
+        // A flat 400 unit radius was refusing to path at all for bots standing
+        // on unrecorded floor, which on a sparse map is most of it. The start
+        // is traced for line of sight because a start on the far side of a
+        // wall produces a path that begins by walking into it. The destination
+        // is not: a hold post behind cover is supposed to be out of sight.
+        string? fromKey = graph.SnapKey(
+            from, eye, _snapRadii, out float fromAt, out bool fromSeen);
+
+        string? toKey = graph.SnapKey(
+            to, null, _snapRadii, out float toAt, out _);
+
+        if (fromKey == null)
+        {
+            KaiLog.Throttled("pathsnapstart", nameof(SolvePath),
+                $"the START could not be snapped onto the graph within " +
+                $"{_snapRadii[_snapRadii.Count - 1]:F0} units. The bot is standing somewhere " +
+                $"the recorder has never been, which is a coverage problem rather than an " +
+                $"unreachable destination.", 10.0f);
+
+            return null;
+        }
+
+        if (toKey == null)
+        {
+            KaiLog.Throttled("pathsnapend", nameof(SolvePath),
+                $"the DESTINATION could not be snapped onto the graph within " +
+                $"{_snapRadii[_snapRadii.Count - 1]:F0} units", 10.0f);
+
+            return null;
+        }
+
+        if (fromAt > _snapRadii[0] || !fromSeen)
+        {
+            KaiLog.Throttled("pathsnapwide", nameof(SolvePath),
+                $"start snapped {fromAt:F0} units away (seen={fromSeen}), destination " +
+                $"{toAt:F0}. A wide or unseen snap means the path may begin with a stretch " +
+                $"the bot has to improvise.", 10.0f);
+        }
+
+        var path = graph.FindPath(fromKey, toKey);
+
+        if (path == null || path.Count < 2)
+        {
+            return null;
+        }
+
+        // Simplified with the same tolerance the route generator uses, so a
+        // solved approach reads like the routes in the book rather than as a
+        // dense trail of every cell along the way.
+        var waypoints = graph.Simplify(path, 25.0f);
+
+        if (waypoints.Count == 0)
+        {
+            return null;
+        }
+
+        return waypoints;
+    }
+
+    // The path follower, created on first use because it needs a callback
+    // into this instance and field initialisers cannot have one.
+    private KaiPathFollower Pathing()
+    {
+        if (_pathing != null)
+        {
+            return _pathing;
+        }
+
+        // The follower needs two things beyond pathing: a way to ask whether a
+        // point is anywhere the graph knows, and a way to ask for the nearest
+        // few recorded positions. Both are the recorder's business, so they
+        // are passed in rather than the follower being given the recorder.
+        _pathing = new KaiPathFollower(
+            SolvePath,
+            point => _crumbs.IsUsable
+                     && _crumbs.IsReachable(point.X, point.Y, point.Z, _snapRadii[0]),
+            (point, want) => _crumbs.NearestStandableSet(
+                point.X, point.Y, point.Z, _snapRadii[_snapRadii.Count - 1], want));
+
+        // The director walks its clearers and sweepers to positions across
+        // the site, which is exactly the same problem, so it shares the
+        // follower rather than keeping a second one with its own cache.
+        _retake.Pathing = _pathing;
+
+        KaiLog.Event(nameof(Pathing),
+            "path follower created over the breadcrumb graph and handed to the retake director");
+
+        return _pathing;
     }
 
     // Send the whole CT side to the dropped bomb.
@@ -5872,22 +7274,216 @@ public class KaiBotTacticsPlugin : BasePlugin
             // tick. A bot turning round on its own timer was the bug that made
             // the old version read as indecision rather than deception.
             _routeLeg[player.Slot] = leg;
+
+            // A waypoint reached is a leg finished, so the stall measurement
+            // starts again against the new one rather than carrying over a
+            // distance that belongs to the last.
+            ForgetRouteProgress(player.Slot);
+
             return true;
+        }
+
+        // Notice a bot that has stopped getting anywhere.
+        //
+        // Steering is a shove in a direction with no obstacle avoidance, so a
+        // waypoint whose straight line crosses a wall is a waypoint the bot
+        // walks into that wall for and never leaves. Measured across three
+        // sessions: 27 mid-round freezes totalling 270 seconds, the worst of
+        // them 48 seconds against the same wall with the distance logged
+        // unchanged at 3337 units throughout.
+        //
+        // The escalation is deliberate. Solve a path first, because usually
+        // there is one and the bot simply was not given it. Skip the waypoint
+        // second, because a waypoint that cannot be reached twice running is
+        // one the graph is wrong about. Abandon the route third, because a
+        // bot with no usable route is better off under native pathing than
+        // pinned against masonry.
+        if (StallCheck(player, origin, route, ref leg, distance, reversing))
+        {
+            if (leg < 0 || leg >= route.Waypoints.Count)
+            {
+                // StallCheck now always rejoins rather than running off the
+                // end, so this is a guard against a route that emptied under
+                // us rather than an expected path.
+                _routeOf.Remove(player.Slot);
+                _routeLeg.Remove(player.Slot);
+                ForgetRouteProgress(player.Slot);
+
+                KaiLog.Event(nameof(ApplyRoute),
+                    $"slot {player.Slot} has an empty route and nothing to rejoin",
+                    KaiLogLevel.Error);
+
+                return false;
+            }
+
+            target = route.Waypoints[leg];
+            distance = target.DistanceXY(origin.X, origin.Y);
         }
 
         intent.SteerTowards = target;
         intent.SourceName = $"route:{route.Name}:{leg}" + (reversing ? ":back" : "");
 
-        // Clear the angles crossed on the way rather than staring at the next
-        // waypoint. This is what makes a route a push rather than a march.
-        if (!ApplyTransitClearing(player, pawn, origin, intent))
+        // Run the first half of a post-plant rotation, clear the second.
+        //
+        // Checked before transit clearing rather than inside it, because the
+        // two are alternatives: a sprinting bot has already had its watch
+        // target written and must not then have a corner angle written over
+        // the top of it.
+        if (!ApplyRotationSprint(player, pawn, origin, intent))
         {
-            intent.Watch = new KaiPoint(target.X, target.Y, target.Z + KaiHeights.Chest);
+            // Clear the angles crossed on the way rather than staring at the
+            // next waypoint. This is what makes a route a push rather than a
+            // march.
+            if (!ApplyTransitClearing(player, pawn, origin, intent))
+            {
+                intent.Watch = new KaiPoint(target.X, target.Y, target.Z + KaiHeights.Chest);
+            }
         }
 
         KaiLog.Throttled($"route:{player.Slot}", nameof(ApplyRoute),
             $"slot {player.Slot} on '{route.Name}' leg {leg}/{route.Waypoints.Count}, " +
             $"{distance:F0} units to the next waypoint" + (reversing ? " (returning)" : ""), 2.0f);
+
+        return true;
+    }
+
+    // Has this bot stopped closing on its waypoint, and what should be done
+    // about it?
+    //
+    // Returns true when the route was changed, in which case the caller must
+    // re-read the waypoint. A leg index outside the route on return means the
+    // route has been given up on entirely.
+    private bool StallCheck(
+        CCSPlayerController player,
+        Vector origin,
+        KaiRoute route,
+        ref int leg,
+        float distance,
+        bool reversing)
+    {
+        float now = Server.CurrentTime;
+        int slot = player.Slot;
+
+        float best = _routeBest.GetValueOrDefault(slot, float.MaxValue);
+
+        if (distance < best - _routeStallImprovement)
+        {
+            _routeBest[slot] = distance;
+            _routeBestAt[slot] = now;
+
+            return false;
+        }
+
+        if (!_routeBestAt.TryGetValue(slot, out float since))
+        {
+            // First look at this leg. Start the clock rather than judging it
+            // on a measurement that does not exist yet.
+            _routeBest[slot] = distance;
+            _routeBestAt[slot] = now;
+
+            return false;
+        }
+
+        float stuckFor = now - since;
+
+        if (stuckFor < _routeStallSeconds)
+        {
+            return false;
+        }
+
+        int stalls = _routeStalls.GetValueOrDefault(slot, 0) + 1;
+        _routeStalls[slot] = stalls;
+        _routeBest[slot] = float.MaxValue;
+        _routeBestAt[slot] = now;
+
+        // First stall: try to path to the waypoint from where the bot has
+        // actually ended up, which is not where it was when the route was
+        // handed to it.
+        //
+        // Not while reversing. A solved path runs from the bot to the
+        // waypoint, and a bot walking the route backwards would then walk
+        // those nodes in reverse, which is the wrong way down a path that was
+        // never symmetric. A reversing bot skips the waypoint instead, which
+        // costs it one node of a journey it is abandoning anyway.
+        if (stalls == 1 && !reversing)
+        {
+            var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+            var approach = SolvePath(here, route.Waypoints[leg]);
+
+            if (approach != null && approach.Count > 0)
+            {
+                // Splice the solved nodes in ahead of the waypoint that could
+                // not be reached, so the rest of the route is preserved.
+                route.Waypoints.InsertRange(leg, approach);
+
+                KaiLog.Event(nameof(StallCheck),
+                    $"slot {slot} made no progress on '{route.Name}' for {stuckFor:F1}s, " +
+                    $"stuck {distance:F0} units from waypoint {leg + 1}. Spliced a " +
+                    $"{approach.Count} node path in to reach it.");
+
+                return true;
+            }
+
+            KaiLog.Event(nameof(StallCheck),
+                $"slot {slot} made no progress on '{route.Name}' for {stuckFor:F1}s at " +
+                $"{distance:F0} units from waypoint {leg + 1}, and no path to it exists. " +
+                $"Skipping the waypoint.",
+                KaiLogLevel.Error);
+        }
+
+        // Second stall or no path: skip the waypoint.
+        if (reversing)
+        {
+            leg--;
+        }
+        else
+        {
+            leg++;
+        }
+
+        _routeLeg[slot] = leg;
+
+        if (leg < 0 || leg >= route.Waypoints.Count)
+        {
+            // Do not hand the bot back.
+            //
+            // Running off the end of a route used to drop it, which left the
+            // bot with no plugin movement at all. Instead the route is kept
+            // and the bot rejoins it at whichever waypoint it is nearest to
+            // now, which after all that skipping and shoving is rarely where
+            // it was. If it is genuinely wedged, the follower's escape will
+            // deal with that; this only decides which waypoint it aims at
+            // once it is free.
+            int rejoin = 0;
+            float bestDist = float.MaxValue;
+
+            for (int i = 0; i < route.Waypoints.Count; i++)
+            {
+                float d = route.Waypoints[i].DistanceXY(origin.X, origin.Y);
+
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    rejoin = i;
+                }
+            }
+
+            leg = rejoin;
+            _routeLeg[slot] = leg;
+            _routeStalls[slot] = 0;
+
+            KaiLog.Event(nameof(StallCheck),
+                $"slot {slot} ran out of '{route.Name}' skipping waypoints it could not " +
+                $"reach. Rejoining at waypoint {leg + 1} of {route.Waypoints.Count}, " +
+                $"{bestDist:F0} units away, rather than being handed back.",
+                KaiLogLevel.Error);
+
+            return true;
+        }
+
+        KaiLog.Event(nameof(StallCheck),
+            $"slot {slot} gave up on waypoint {leg} of '{route.Name}' after {stalls} " +
+            $"stall(s) and is now heading for {leg + 1}/{route.Waypoints.Count}");
 
         return true;
     }
@@ -5900,6 +7496,19 @@ public class KaiBotTacticsPlugin : BasePlugin
     private void RefreshContacts(float now)
     {
         _contacts.RemoveAll(c => now - c.Stamp > _supportSeconds);
+
+        // The handicap goes in before the ordinary sightings.
+        //
+        // Feeding it through the contact list rather than bolting it onto any
+        // one behaviour is the whole trick. Every consumer already reads this
+        // list: ApplyContactSupport swings bots onto it, AttributeContactToSite
+        // decides which site is under pressure from it, the retake director
+        // reads it when assigning clearers, and the comms layer calls it out.
+        // So one synthetic contact makes the human's position known everywhere
+        // it could possibly matter, in retakes and post-plants included,
+        // without a single one of those consumers needing to know the contact
+        // was not earned.
+        TrackHumansUnfairly(now);
 
         if (!_supportFire)
         {
@@ -6077,6 +7686,198 @@ public class KaiBotTacticsPlugin : BasePlugin
     // deliberately crude: a running tally per site over the whole round rather
     // than a live picture, because a contact twenty seconds old still tells
     // you where they chose to go, and that is what a read is.
+    // Tell the enemy side exactly where the human is.
+    //
+    // See BOT_GOD_MODE_VS_HUMAN_TRACKING at the top of the file for why this
+    // exists. In short: the bots have run out of room to get smarter, and this
+    // is the deliberate, visible, single-flag thumb on the scale that replaces
+    // turning them into aimbots.
+    //
+    // The contact is written as though somebody reported it, with two
+    // differences that matter.
+    //
+    // ReportedBy is -1, nobody. Real contacts carry the slot that saw them so
+    // a bot does not treat its own sighting as a team mate needing support.
+    // A slot of -1 belongs to no bot, so no bot skips this one and the whole
+    // enemy side responds to it.
+    //
+    // The stamp is refreshed every tick, so the contact never ages out of the
+    // list the way a real sighting does after _supportSeconds. That is what
+    // makes the knowledge continuous rather than a two and a half second
+    // memory of where the human used to be.
+    private void TrackHumansUnfairly(float now)
+    {
+        if (!BOT_GOD_MODE_VS_HUMAN_TRACKING)
+        {
+            return;
+        }
+
+        float elapsed = now - _roundStartedAt;
+
+        if (elapsed < BOT_GOD_MODE_VS_HUMAN_DELAY)
+        {
+            KaiLog.Throttled("omniwait", nameof(TrackHumansUnfairly),
+                $"human tracking starts in {BOT_GOD_MODE_VS_HUMAN_DELAY - elapsed:F0}s; " +
+                $"until then the bots are on their own eyes", 10.0f);
+
+            return;
+        }
+
+        if (_bombPlanted && !BOT_GOD_MODE_VS_HUMAN_POST_PLANT)
+        {
+            return;
+        }
+
+        int tracked = 0;
+
+        foreach (var player in KaiPlayers.All())
+        {
+            if (player == null || !player.IsValid || player.IsBot || player.IsHLTV)
+            {
+                continue;
+            }
+
+            // Spectators and anybody not on a playing side have no position
+            // worth reporting.
+            int team = (int)player.TeamNum;
+
+            if (team != (int)CsTeam.Terrorist && team != (int)CsTeam.CounterTerrorist)
+            {
+                continue;
+            }
+
+            // A dead human is not tracked, and there is no flag to change
+            // that, because there is nothing a dead human's position is good
+            // for. Once they are down the round plays out bot against bot and
+            // the handicap has nothing left to counter.
+            //
+            // It would also be actively wrong. A dead player's controller no
+            // longer reliably resolves to their own corpse: it can follow
+            // whoever they are spectating, so the "human position" fed to the
+            // bots would be some other player's camera, and the enemy side
+            // would rotate onto a phantom.
+            if (!player.PawnIsAlive)
+            {
+                continue;
+            }
+
+            var origin = player.PlayerPawn?.Value?.AbsOrigin;
+
+            if (origin == null)
+            {
+                continue;
+            }
+
+            var position = new KaiPoint(
+                origin.X, origin.Y, origin.Z + KaiHeights.Chest);
+
+            // Replace this human's standing contact rather than adding a
+            // second one. Matched on team and proximity the same way real
+            // reports are merged, but with a wide radius, because the human
+            // moves and the old contact should follow them rather than
+            // leaving a trail of ghosts across the map.
+            KaiContact? existing = null;
+
+            foreach (var c in _contacts)
+            {
+                if (c.ReportedBy == -1 && c.EnemyTeam == team)
+                {
+                    existing = c;
+                    break;
+                }
+            }
+
+            if (existing != null)
+            {
+                existing.Position = position;
+                existing.Stamp = now;
+            }
+            else
+            {
+                _contacts.Add(new KaiContact
+                {
+                    Position = position,
+                    EnemyTeam = team,
+                    ReportedBy = -1,
+                    Stamp = now,
+                });
+
+                KaiLog.Event(nameof(TrackHumansUnfairly),
+                    $"human '{player.PlayerName}' on team {team} is now being tracked " +
+                    $"continuously at ({position.X:F0},{position.Y:F0},{position.Z:F0}), " +
+                    $"{elapsed:F0}s into the round. The enemy side knows where they are " +
+                    $"from here on.");
+            }
+
+            // Feed the position to the site attribution, so a human walking
+            // towards A registers as pressure on A even when no bot has seen
+            // them do it. This is the useful half of the handicap: it changes
+            // which site the side sets up on, without dragging individual bots
+            // out of position.
+            //
+            // Rate limited, because this runs every tick and the attribution
+            // is a running count. Left unlimited it flooded: site counts
+            // reached 3908 against a handful from real sightings, so the
+            // counter stopped measuring pressure and started measuring how
+            // long the human had stood somewhere.
+            if (now - _lastTrackedAttribution >= TrackedAttributionInterval)
+            {
+                _lastTrackedAttribution = now;
+
+                DecayContactsBySite();
+                AttributeContactToSite(position);
+            }
+
+            // Remember where the human is for the pre-aim bias below. This is
+            // the other half: bots choose to hold the angle covering the
+            // human rather than setting off towards them.
+            _trackedHuman = position;
+            _trackedHumanAt = now;
+            _trackedHumanTeam = team;
+
+            tracked++;
+        }
+
+        if (tracked > 0)
+        {
+            KaiLog.Throttled("omni", nameof(TrackHumansUnfairly),
+                $"tracking {tracked} human(s) at {elapsed:F0}s into the round, " +
+                $"planted={_bombPlanted}", 5.0f);
+        }
+    }
+
+    // Bleed the per-site contact counts down over time.
+    //
+    // The counts are a running total for the round with no decay, which is
+    // fine for real sightings because those are rare. The tracked human
+    // contributes one every second, so without this a human who walks past A
+    // early leaves A weighted for the rest of the round and the side sets up
+    // on the wrong site long after they have gone to B.
+    //
+    // Subtractive rather than proportional, so a site the human has left
+    // returns to nothing in a predictable time rather than decaying forever
+    // towards it.
+    private void DecayContactsBySite()
+    {
+        bool any = false;
+
+        for (int i = 0; i < _contactsBySite.Length; i++)
+        {
+            if (_contactsBySite[i] > 0)
+            {
+                _contactsBySite[i]--;
+                any = true;
+            }
+        }
+
+        if (any)
+        {
+            KaiLog.Throttled("sitedecay", nameof(DecayContactsBySite),
+                $"site contact counts decayed to [{string.Join(",", _contactsBySite)}]",
+                10.0f);
+        }
+    }
+
     private void AttributeContactToSite(KaiPoint position)
     {
         if (_map.PlantSites.Count == 0 || _contactsBySite.Length == 0)
@@ -6134,8 +7935,60 @@ public class KaiBotTacticsPlugin : BasePlugin
 
         foreach (var contact in _contacts)
         {
+            // Never support your own fight.
+            //
+            // RefreshContacts records a contact against the slot that saw the
+            // enemy, and this loop had no idea that a bot could find its own
+            // report in the list. It always could, and it always passed the
+            // line of sight test, because the bot looking at the enemy is by
+            // definition the one that can see it.
+            //
+            // The measured cost: 722 of 1032 support responses across three
+            // sessions were bots "swinging onto" a fight they were already in.
+            // The aim override was harmless, since real contact hands straight
+            // back to the native AI a layer above. The priority was not. This
+            // function returns true, which suppresses the T hold, the loose
+            // bomb guard, the route follower and the pre-aim below it, and
+            // marks the bot as supporting so the retake director skips it as
+            // well. So every bot that saw an enemy silently dropped its route
+            // and its retake assignment and reverted to native wandering for
+            // as long as the contact lived.
+            if (contact.ReportedBy == player.Slot)
+            {
+                continue;
+            }
+
             // Only respond to fights against the other side.
             if (contact.EnemyTeam == myTeam)
+            {
+                continue;
+            }
+
+            // The tracked human is never a support target.
+            //
+            // This function pulls a bot off whatever it was doing: it returns
+            // true, which outranks the route follower, the T hold, the loose
+            // bomb guard and the pre-aim, and it marks the bot as supporting
+            // so the retake director skips it too. That is the correct
+            // response to a team mate in a fight, which is a real event at a
+            // known place that will be over in seconds.
+            //
+            // It is the wrong response to standing knowledge of where the
+            // human is, and letting it through made the bots WORSE. Measured
+            // over two sessions: inside the tracked windows, contact support
+            // fired ten times as often, T holds twenty-seven times as often,
+            // and rotations tripled. The side stopped holding its angles and
+            // walked at the human instead, strung out and one at a time, which
+            // in Counter-Strike is the losing side of every duel. An earlier
+            // version also exempted this contact from the support radius, so
+            // bots were peeling off from as far as 2562 units away against a
+            // limit of 1100 for real contacts.
+            //
+            // The knowledge is still used, further up: it steers the site
+            // attribution, and it biases which angle a bot chooses to hold.
+            // Holding the doorway the human is about to walk through beats
+            // walking to meet them at it.
+            if (contact.ReportedBy == -1)
             {
                 continue;
             }
@@ -6150,6 +8003,22 @@ public class KaiBotTacticsPlugin : BasePlugin
             var target = new Vector(
                 contact.Position.X, contact.Position.Y, contact.Position.Z);
 
+            // Line of sight is always required, tracked or not.
+            //
+            // This is the line between god mode and a wallhack, and it is
+            // drawn here on purpose. The tracking changes where the side
+            // goes: which site it defends, who rotates, where it clears
+            // first, which angle it holds. It does not change what a bot can
+            // shoot at. When the human is out of view this check fails, no
+            // contact is selected, the function returns false, and the bot
+            // carries on with its route or its hold. The knowledge has
+            // already done its work further up, in the site attribution.
+            //
+            // Removing this check would also wreck the behaviour rather than
+            // sharpen it: contact support outranks the route follower, the T
+            // hold and the pre-aim, so every bot on the enemy side would drop
+            // what it was doing and stand still with its crosshair on a wall
+            // for the rest of the round.
             if (!KaiRayTraceBridge.CanSee(eye, target))
             {
                 continue;
@@ -6300,6 +8169,67 @@ public class KaiBotTacticsPlugin : BasePlugin
 
     // Pull the crosshair onto an authored corner while inside its trigger.
     // Never touches movement.
+    // Does this pre-aim angle watch somewhere the tracked human is?
+    //
+    // Measured against the spot's watch point rather than its trigger. The
+    // trigger is where a bot has to be standing for the angle to apply; the
+    // watch point is where the angle looks. It is the second that decides
+    // whether holding this spot means covering the human.
+    //
+    // Returns false when the handicap is off, when nothing has been tracked
+    // yet, or when the last position is stale, so nothing here has to know
+    // whether the handicap is running.
+    // The tracked human's position, if this team is entitled to know it.
+    //
+    // One place for the three tests every consumer needs: the handicap is on,
+    // something has been tracked recently enough to be current, and the asking
+    // bot is on the opposite side. Returns null otherwise, so no caller has to
+    // know whether the handicap is running.
+    private KaiPoint? TrackedTargetFor(int team)
+    {
+        if (!BOT_GOD_MODE_VS_HUMAN_TRACKING || _trackedHuman == null)
+        {
+            return null;
+        }
+
+        if (Server.CurrentTime - _trackedHumanAt > TrackedHumanStale)
+        {
+            return null;
+        }
+
+        // Never the human's own side. They are supposed to be fighting
+        // whoever is on the other team, not admiring their team mate.
+        if (team == _trackedHumanTeam)
+        {
+            return null;
+        }
+
+        return _trackedHuman;
+    }
+
+    private bool CoversTrackedHuman(KaiPreAimSpot spot, int team)
+    {
+        var human = TrackedTargetFor(team);
+
+        if (human == null)
+        {
+            return false;
+        }
+
+        float d = spot.Watch.DistanceXY(human.X, human.Y);
+
+        if (d > _trackedPreAimRadius)
+        {
+            return false;
+        }
+
+        KaiLog.Throttled($"preaimbias:{spot.Name}", nameof(CoversTrackedHuman),
+            $"'{spot.Name}' watches within {d:F0} units of the tracked human, so it is " +
+            $"worth {_trackedPreAimBonus} more than its own priority to hold", 5.0f);
+
+        return true;
+    }
+
     private void ApplyPreAim(CCSPlayerController player, CCSPlayerPawn pawn, Vector origin)
     {
         if (_map.PreAim.Count == 0)
@@ -6356,9 +8286,35 @@ public class KaiBotTacticsPlugin : BasePlugin
                 }
             }
 
-            if (spot.Priority > chosenPriority)
+            // Favour the angle that covers the tracked human.
+            //
+            // This is where the handicap earns its keep, and it is the
+            // opposite of what the first version did. Knowing where the human
+            // is should not send bots to meet them: a bot walking into a held
+            // angle loses, and five bots walking in one at a time lose one at
+            // a time. It should decide WHICH angle the bots are already
+            // holding.
+            //
+            // So a spot whose watch point covers the human's position gets a
+            // large priority bonus, and the ordinary selection does the rest.
+            // The effect on screen is a side that happens to be looking at the
+            // doorway before the human comes through it, which is exactly what
+            // a good human opponent does and exactly what the bots cannot
+            // work out for themselves.
+            //
+            // The zone and spacing rules further down are untouched, so this
+            // biases the choice without collapsing the whole side onto one
+            // angle.
+            int priority = spot.Priority;
+
+            if (CoversTrackedHuman(spot, team))
             {
-                chosenPriority = spot.Priority;
+                priority += _trackedPreAimBonus;
+            }
+
+            if (priority > chosenPriority)
+            {
+                chosenPriority = priority;
                 chosen = spot;
             }
         }
@@ -7391,6 +9347,26 @@ public class KaiBotTacticsPlugin : BasePlugin
                                 $"'{intent.SourceName}'", 2.0f);
                         }
 
+                        // A jump the plugin actually asked for.
+                        //
+                        // Checked before the blanket suppression below,
+                        // because that suppression exists to stop the native
+                        // anti-stuck reflex, not to stop the escape routine
+                        // from doing the one thing that frees a bot caught on
+                        // a step.
+                        if (intent.Jump)
+                        {
+                            ulong beforeWanted = bot.ButtonFlags;
+
+                            ref ulong wantedJump = ref bot.ButtonFlags;
+                            wantedJump = beforeWanted | (ulong)PlayerButtons.Jump;
+
+                            KaiLog.Throttled($"wantjump:{controller.Slot}",
+                                nameof(OnBotUpdatePost),
+                                $"slot {controller.Slot} jumping on purpose for " +
+                                $"'{intent.SourceName}'", 1.0f);
+                        }
+
                         // No jumping while being steered.
                         //
                         // The same anti-stuck reflex that made pinned bots hop
@@ -7403,6 +9379,7 @@ public class KaiBotTacticsPlugin : BasePlugin
                         ulong beforeSteerJump = bot.ButtonFlags;
 
                         if (!intent.Erratic
+                            && !intent.Jump
                             && (beforeSteerJump & (ulong)PlayerButtons.Jump) != 0)
                         {
                             ref ulong steerButtons = ref bot.ButtonFlags;
@@ -7488,7 +9465,8 @@ public class KaiBotTacticsPlugin : BasePlugin
             // arrived somewhere.
             ulong beforeJump = bot.ButtonFlags;
 
-            if ((beforeJump & (ulong)PlayerButtons.Jump) != 0)
+            if ((beforeJump & (ulong)PlayerButtons.Jump) != 0
+                && !intent.Jump)
             {
                 ref ulong jumpButtons = ref bot.ButtonFlags;
                 jumpButtons = beforeJump & ~(ulong)PlayerButtons.Jump;
@@ -7726,6 +9704,7 @@ public class KaiBotTacticsPlugin : BasePlugin
             {
                 _glanceDwell = gd;
                 _glanceSet.Clear();
+                _glanceOrigin.Clear();
             }
             else if (key == "arc" && float.TryParse(cmd.GetArg(2), out float ar))
             {
@@ -7744,6 +9723,7 @@ public class KaiBotTacticsPlugin : BasePlugin
             {
                 _coverageRange = cr;
                 _glanceSet.Clear();
+                _glanceOrigin.Clear();
             }
             else if (key == "sep" && float.TryParse(cmd.GetArg(2), out float sep))
             {
@@ -7766,6 +9746,28 @@ public class KaiBotTacticsPlugin : BasePlugin
             else if (key == "sitemate" && float.TryParse(cmd.GetArg(2), out float sm))
             {
                 _siteMateRadius = sm;
+            }
+            else if (key == "stall" && float.TryParse(cmd.GetArg(2), out float st))
+            {
+                // Clamped rather than taken raw. Below a second, a bot
+                // rounding a corner away from its waypoint is mistaken for a
+                // stuck one and the route is torn up under it.
+                _routeStallSeconds = Math.Clamp(st, 1.0f, 30.0f);
+                Pathing().StallSeconds = _routeStallSeconds;
+            }
+            else if (key == "stallmove" && float.TryParse(cmd.GetArg(2), out float si))
+            {
+                _routeStallImprovement = Math.Clamp(si, 1.0f, 500.0f);
+                Pathing().StallImprovement = _routeStallImprovement;
+            }
+            else if (key == "approach" && float.TryParse(cmd.GetArg(2), out float ap))
+            {
+                _routeApproachDistance = Math.Clamp(ap, 0.0f, 8000.0f);
+                Pathing().DirectDistance = _routeApproachDistance;
+            }
+            else if (key == "kniferange" && float.TryParse(cmd.GetArg(2), out float kr))
+            {
+                _arsenal.KnifeRushRange = Math.Clamp(kr, 0.0f, 8000.0f);
             }
             else if (key == "cover")
             {
@@ -8246,6 +10248,14 @@ public class KaiBotTacticsPlugin : BasePlugin
         cmd.ReplyToCommand(
             $"[KaiTactics] rotation: {rotation} | decoys={_decoySite.Count}/{_decoyCount} " +
             $"realSite={_realTargetSite}");
+
+        // The follower is where a round's worth of "why did that bot stop
+        // walking" ends up, so it is worth having on the same command as the
+        // routes it serves.
+        cmd.ReplyToCommand(
+            $"[KaiTactics] pathing: {Pathing().Summary()} | " +
+            $"stallAfter={_routeStallSeconds:F1}s improve={_routeStallImprovement:F0}u " +
+            $"approachOver={_routeApproachDistance:F0}u stalling={_routeStalls.Count}");
     }
 
     [ConsoleCommand("kai_solve", "Pre-compute the best holding positions for this map")]
@@ -8281,6 +10291,7 @@ public class KaiBotTacticsPlugin : BasePlugin
             _solveQueue.Clear();
             _tCover.Clear();
             _glanceSet.Clear();
+            _glanceOrigin.Clear();
 
             cmd.ReplyToCommand("[KaiTactics] solved posts cleared");
             return;

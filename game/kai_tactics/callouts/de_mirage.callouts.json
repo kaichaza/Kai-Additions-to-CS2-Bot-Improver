@@ -1,0 +1,342 @@
+{
+  "mapName": "de_mirage",
+  "maxDistance": 750,
+  "anchors": [
+    {
+      "name": "T Spawn",
+      "x": 1150,
+      "y": 50,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Side Alley",
+      "x": 1000,
+      "y": 520,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Cart",
+      "x": 780,
+      "y": 430,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "House",
+      "x": 560,
+      "y": 700,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Ramp",
+      "x": 700,
+      "y": 250,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Kitchen",
+      "x": -780,
+      "y": 800,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Back Alley",
+      "x": -560,
+      "y": 620,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Apartments",
+      "x": -1080,
+      "y": 520,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Arches",
+      "x": -1380,
+      "y": 300,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Van",
+      "x": -1880,
+      "y": 420,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Bench",
+      "x": -2120,
+      "y": 190,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Boost Boxes",
+      "x": -2300,
+      "y": 430,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Site",
+      "x": -2043,
+      "y": 306,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Platform",
+      "x": -1900,
+      "y": 640,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Market",
+      "x": -1820,
+      "y": -480,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Window",
+      "x": -2150,
+      "y": -420,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Door",
+      "x": -2350,
+      "y": -560,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Sneaky",
+      "x": -2050,
+      "y": -900,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "E Box",
+      "x": -1500,
+      "y": -620,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Snipers Nest",
+      "x": -1450,
+      "y": -600,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Short",
+      "x": -380,
+      "y": 120,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Underpass",
+      "x": -520,
+      "y": -90,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Vent",
+      "x": -700,
+      "y": -380,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Ladder Room",
+      "x": -620,
+      "y": -250,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Catwalk",
+      "x": -260,
+      "y": -700,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Mid",
+      "x": -120,
+      "y": -420,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Top Mid",
+      "x": 380,
+      "y": -300,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Mid Boxes",
+      "x": 560,
+      "y": -560,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Chair",
+      "x": 180,
+      "y": -620,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Connector",
+      "x": -620,
+      "y": -880,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Jungle",
+      "x": -720,
+      "y": -1280,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Sandwich",
+      "x": 0,
+      "y": -1000,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Stairs",
+      "x": 180,
+      "y": -1180,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Tetris",
+      "x": 330,
+      "y": -1120,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Shadows",
+      "x": 600,
+      "y": -1320,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Ramp",
+      "x": 480,
+      "y": -980,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Palace",
+      "x": 760,
+      "y": -1560,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Pillars",
+      "x": 520,
+      "y": -1720,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Roof",
+      "x": 880,
+      "y": -1180,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Triple Box",
+      "x": -780,
+      "y": -1900,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Trash",
+      "x": -900,
+      "y": -1750,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT Spawn",
+      "x": -1720,
+      "y": -1700,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT",
+      "x": -1150,
+      "y": -2050,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Ticket Booth",
+      "x": -980,
+      "y": -2380,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Site",
+      "x": -471,
+      "y": -2136,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Ninja",
+      "x": -620,
+      "y": -2480,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Firebox",
+      "x": -300,
+      "y": -2520,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Balcony",
+      "x": -90,
+      "y": -2380,
+      "z": 0,
+      "hasHeight": false
+    }
+  ]
+}

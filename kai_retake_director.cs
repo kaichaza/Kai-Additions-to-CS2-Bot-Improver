@@ -90,6 +90,16 @@ public enum KaiRetakePhase
 
 public sealed class KaiRetakeDirector
 {
+    // Walks bots to positions along the breadcrumb graph. Handed in by the
+    // plugin, which owns the graph, so the director and the route follower
+    // share one cache rather than each keeping its own.
+    //
+    // Null is tolerated everywhere it is used. Without it the director falls
+    // back to the straight line steering it used before, which is what it did
+    // for its whole life up to now, so a missing follower degrades rather
+    // than breaks.
+    public KaiPathFollower? Pathing;
+
     // ------------------------------------------------------------------
     // Tunables. Public so kai_retake can change them mid-session.
     // ------------------------------------------------------------------
@@ -132,9 +142,23 @@ public sealed class KaiRetakeDirector
     // How long the bait phase lasts before committing.
     public float BaitSeconds = 6.0f;
 
+    // How many fake defuse taps before the side stops baiting and goes.
+    //
+    // One. The tap produces the defuse sound, a lurker either reacts to it or
+    // does not, and a second tap tells them nothing the first did not. The
+    // Bait phase used to run its full timer regardless, which is six seconds
+    // of bomb clock spent on a bluff that had already worked or already
+    // failed.
+    public int FakeTapsBeforeCommit = 1;
+
     // How far from the bomb the designated defuser is pinned during Clear.
     // Must be comfortably more than the 72 unit defuse radius.
     public float DefuserStandoff = 190.0f;
+
+    // Furthest from the bomb the designated defuser will stage while the site
+    // is being swept. Close enough that Commit means stepping onto the bomb
+    // rather than crossing the site to reach it.
+    public float DefuserStageMaxBombDistance = 800.0f;
 
     // Extra headroom beyond the defuse time. When the bomb has less than
     // defuseTime plus this remaining, commit regardless of phase, because a
@@ -304,6 +328,16 @@ public sealed class KaiRetakeDirector
     private bool _fakeHolding;
     private int _fakeTapCount;
 
+    // True once the side has finished baiting and moved on.
+    //
+    // A latch, not a live test. The tap-count condition alone was wrong:
+    // DriveFakeDefuse schedules a repeat hold 1.6s after each release, so
+    // _fakeHolding goes true again, the guard flips back to false, and the
+    // phase falls through into Bait a second time. Observed twice in one
+    // session as "phase Commit -> Bait", which is a defuse being called off to
+    // go and bluff again.
+    private bool _baitDone;
+
     // ------------------------------------------------------------------
     // Lifecycle
     // ------------------------------------------------------------------
@@ -339,6 +373,11 @@ public sealed class KaiRetakeDirector
         _nextFakeToggle = 0.0f;
         _fakeHolding = false;
         _fakeTapCount = 0;
+        _baitDone = false;
+
+        // Every cached path was solved to an assignment that no longer
+        // exists. Left in place they would walk bots to last round's spots.
+        Pathing?.Clear();
 
         KaiLog.Event(nameof(Reset), $"retake director reset ({reason})");
     }
@@ -405,7 +444,32 @@ public sealed class KaiRetakeDirector
             .OrderByDescending(s => s.Priority)
             .ToList();
 
-        _defuserStage = candidates.FirstOrDefault(s => s.Stage);
+        // Prefer a staging spot the defuser can reach and still be on the bomb
+        // quickly from. A staging position on the far side of the site is a
+        // defuser that has to cross it again the moment Commit arrives, and
+        // crossing a site you have just declared uncleared is the slowest and
+        // most dangerous way to start a defuse.
+        _defuserStage = candidates
+            .Where(s => s.Stage)
+            .Where(s => s.Anchor.DistanceXY(bombPos.X, bombPos.Y) <= DefuserStageMaxBombDistance)
+            .OrderBy(s => s.Anchor.DistanceXY(bombPos.X, bombPos.Y))
+            .FirstOrDefault();
+
+        if (_defuserStage == null)
+        {
+            // Nothing close enough. Fall back to the old behaviour rather
+            // than leaving the defuser with no staging spot at all, which
+            // sends it to the bare standoff branch.
+            _defuserStage = candidates.FirstOrDefault(s => s.Stage);
+
+            if (_defuserStage != null)
+            {
+                KaiLog.Event(nameof(OnBombPlanted),
+                    $"no staging spot within {DefuserStageMaxBombDistance:F0} units of the " +
+                    $"bomb, falling back to '{_defuserStage.Name}' at " +
+                    $"{_defuserStage.Anchor.DistanceXY(bombPos.X, bombPos.Y):F0} units");
+            }
+        }
 
         if (_defuserStage != null)
         {
@@ -791,7 +855,23 @@ public sealed class KaiRetakeDirector
                     $"{beat.Count - cursor - 1} more after it", 3.0f);
             }
 
-            intent.SteerTowards = approach;
+            // Walked, not shoved. The approach position is chosen for its
+            // sightline and its spacing from the other sweepers, neither of
+            // which cares whether there is a wall between the bot and it, so
+            // the straight line this used to steer along was frequently into
+            // one.
+            var closing = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+            if (Pathing != null)
+            {
+                Pathing.Steer(
+                    bot.Slot, closing, approach, now, intent, $"sweep:{spotIndex}");
+            }
+            else
+            {
+                intent.SteerTowards = approach;
+            }
+
             intent.SourceName = $"sweep:{spotIndex}:closing";
 
             // Hold the dwell timer while closing, so the spot gets its full
@@ -1174,7 +1254,19 @@ public sealed class KaiRetakeDirector
         // Seconds available for anything other than defusing.
         float spare = remaining - defuseTime - MustCommitReserve;
 
-        if (remaining > 0.0f && spare <= 0.0f)
+        if (KaiBombState.IsBeingDefused())
+        {
+            // A defuse in progress ends the argument.
+            //
+            // Checked first, and unconditionally, because the phase machine
+            // recomputes every tick and any branch that sent the bot back to
+            // Inspect or Bait would take it off a bar that is already running.
+            // Barely started is still started: the team mates are there to
+            // take the fights, and a defuse abandoned at two seconds has cost
+            // the round for nothing.
+            Phase = KaiRetakePhase.Commit;
+        }
+        else if (remaining > 0.0f && spare <= 0.0f)
         {
             // No time on the clock. Rush it.
             Phase = KaiRetakePhase.Commit;
@@ -1191,6 +1283,20 @@ public sealed class KaiRetakeDirector
             // the timer is the backstop for a site the team cannot fully see.
             Phase = KaiRetakePhase.Inspect;
         }
+        else if (_baitDone || (_fakeTapCount >= FakeTapsBeforeCommit && !_fakeHolding))
+        {
+            // The fake has been done. One tap is the whole idea: it makes the
+            // defuse sound, which is what draws a lurker out of a corner the
+            // sweep could not see into. Repeating it does not draw anybody
+            // else out, it just spends bomb timer, and spending bomb timer is
+            // how the side ended up committing with five seconds left.
+            //
+            // The !_fakeHolding term matters: the counter increments when the
+            // hold STARTS, so without it the phase would flip mid-tap and cut
+            // the sound short. Waiting for the release costs 700ms and is the
+            // difference between a bluff a lurker can hear and a click.
+            Phase = KaiRetakePhase.Commit;
+        }
         else if (elapsed < InspectSeconds + BaitSeconds && spare > BaitSeconds)
         {
             // Either the site is swept and nobody was found, or the timer ran
@@ -1202,6 +1308,13 @@ public sealed class KaiRetakeDirector
         else
         {
             Phase = KaiRetakePhase.Commit;
+        }
+
+        if (previous == KaiRetakePhase.Bait && Phase != KaiRetakePhase.Bait)
+        {
+            // Left Bait. Whatever happens to the tap counter from here, the
+            // bluff has been made and the side does not go back to it.
+            _baitDone = true;
         }
 
         if (Phase != previous)
@@ -1827,7 +1940,40 @@ public sealed class KaiRetakeDirector
                 }
                 else
                 {
+                    // Tell it to go there.
+                    //
+                    // This branch used to write a source name and nothing
+                    // else, on the assumption that native pathing would carry
+                    // the defuser to its staging spot. It did not: measured
+                    // over a session, every hold-back line read
+                    // 'stage:ctClear_020:enroute' and the bot never arrived,
+                    // so it never anchored, never inspected, and was still
+                    // wandering when the phase timer expired. That is the
+                    // whole reason defuses were starting with five seconds on
+                    // the clock.
+                    //
+                    // Same fault, and same fix, as DriveClearer had.
+                    intent.Anchored = false;
                     intent.SourceName = $"stage:{_defuserStage.Name}:enroute";
+
+                    var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+                    var to = new KaiPoint(
+                        _defuserStage.Anchor.X,
+                        _defuserStage.Anchor.Y,
+                        _defuserStage.Anchor.Z);
+
+                    bool steered = false;
+
+                    if (Pathing != null)
+                    {
+                        steered = Pathing.Steer(
+                            bot.Slot, here, to, now, intent, $"stage:{_defuserStage.Name}");
+                    }
+
+                    if (!steered)
+                    {
+                        intent.SteerTowards = to;
+                    }
                 }
             }
             else
@@ -2303,11 +2449,53 @@ public sealed class KaiRetakeDirector
             intent.Anchored = false;
             intent.SourceName = $"clear:{spot.Name}:enroute";
 
+            // Tell it to go there.
+            //
+            // Nothing here ever did. The anchor was cleared, a source name
+            // was written, a line was logged saying the bot was en route, and
+            // then the function returned having issued no movement command of
+            // any kind, on the assumption that native pathing would carry the
+            // bot onto the site by itself. It did not: of 23 measured approach
+            // runs, 18 finished further from the assigned spot than they
+            // started, several by more than 1000 units, while the log
+            // cheerfully reported them en route the whole time. That is why
+            // inspection ended with most of the site never swept in 17 rounds,
+            // and why the defuse watchdog fired in 9.
+            var destination = new KaiPoint(spot.Anchor.X, spot.Anchor.Y, spot.Anchor.Z);
+            var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+            bool steered = false;
+
+            if (Pathing != null)
+            {
+                steered = Pathing.Steer(
+                    bot.Slot, here, destination, now, intent, $"clear:{spot.Name}");
+            }
+
+            if (!steered)
+            {
+                // Either there is no follower, or the follower counts the bot
+                // as arrived while this function does not. The two measure
+                // differently on purpose: the follower works horizontally,
+                // this works in three dimensions, so on stairs they can
+                // disagree by the height of the step. Whichever it is, the
+                // bot still needs telling to move, and the last stretch is
+                // short enough for a straight line to be safe.
+                intent.SteerTowards = destination;
+
+                KaiLog.Throttled($"clearnopath:{bot.Slot}", nameof(DriveClearer),
+                    $"slot {bot.Slot} closing the last of the way to '{spot.Name}' " +
+                    $"directly", 5.0f);
+            }
+
             KaiLog.Throttled($"clearwalk:{bot.Slot}", nameof(DriveClearer),
                 $"slot {bot.Slot} en route to '{spot.Name}', {MathF.Sqrt(distSqr):F0} units out", 2.0f);
 
             return;
         }
+
+        // Standing on it. Drop the path so the next assignment solves fresh.
+        Pathing?.Forget(bot.Slot);
 
         intent.Anchored = true;
         intent.Crouch = spot.Crouch;

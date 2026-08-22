@@ -1,0 +1,7289 @@
+{
+  "mapName": "de_dust2",
+  "schemaVersion": 2,
+  "generatedUtc": "2026-08-18 04:49:09Z",
+  "generatorVersion": "0.3.0",
+  "sourceSamples": 2260,
+  "sourceEngagements": 1186,
+  "postPlant": [
+    {
+      "name": "postPlant_001",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -1396.0603,
+        "y": 2769.2908,
+        "z": 16.455532
+      },
+      "watch": {
+        "x": -1638.985,
+        "y": 2514.5032,
+        "z": 56.12294
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 11,
+      "samples": 11,
+      "bombDist": 222.86357,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_002",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -1317.1979,
+        "y": 2212.7087,
+        "z": 2.5617101
+      },
+      "watch": {
+        "x": -261.9509,
+        "y": 2206.199,
+        "z": -56.593033
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 10,
+      "samples": 10,
+      "bombDist": 500.00024,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_003",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": 1063.6819,
+        "y": 3051.3347,
+        "z": 130.52689
+      },
+      "watch": {
+        "x": 1182.746,
+        "y": 2540.053,
+        "z": 129.3852
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 4,
+      "samples": 4,
+      "bombDist": 446.9389,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_004",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -405.35513,
+        "y": 1554.2135,
+        "z": -126.16858
+      },
+      "watch": {
+        "x": -588.96326,
+        "y": 2288.5034,
+        "z": -64.486015
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 4,
+      "samples": 4,
+      "bombDist": 1690.4622,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_005",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -1478.9799,
+        "y": 2680.8428,
+        "z": 10.229421
+      },
+      "watch": {
+        "x": -1743.859,
+        "y": 2082.1545,
+        "z": 51.012493
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 3,
+      "samples": 3,
+      "bombDist": 79.75295,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_006",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -223.18001,
+        "y": 2175.2886,
+        "z": -125.91922
+      },
+      "watch": {
+        "x": 170.99611,
+        "y": 2186.2612,
+        "z": -74.41643
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 3,
+      "samples": 3,
+      "bombDist": 1461.277,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_007",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -1268.6833,
+        "y": 2105.7854,
+        "z": 12.006928
+      },
+      "watch": {
+        "x": -862.34106,
+        "y": 2255.7434,
+        "z": -33.14036
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 3,
+      "samples": 3,
+      "bombDist": 604.3034,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_008",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -308.11237,
+        "y": 2043.0369,
+        "z": -127.39824
+      },
+      "watch": {
+        "x": 647.1986,
+        "y": 2184.1475,
+        "z": -6.474875
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 3,
+      "samples": 3,
+      "bombDist": 1416.9156,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_009",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": 1592.512,
+        "y": 2725.266,
+        "z": 108.526535
+      },
+      "watch": {
+        "x": 1271.6683,
+        "y": 2240.9692,
+        "z": 61.278652
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 538.493,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_010",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": 1092.0055,
+        "y": 2910.329,
+        "z": 128.17056
+      },
+      "watch": {
+        "x": 930.1765,
+        "y": 2454.627,
+        "z": 148.68277
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 428.25073,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_011",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": 382.10138,
+        "y": 2081.0977,
+        "z": -125.48065
+      },
+      "watch": {
+        "x": -739.7889,
+        "y": 2163.331,
+        "z": -21.171518
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 1981.7869,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_012",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": 1303.6438,
+        "y": 2001.4686,
+        "z": -0.766891
+      },
+      "watch": {
+        "x": 782.1449,
+        "y": 2293.475,
+        "z": 104.02658
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 536.4685,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_013",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -1994.3435,
+        "y": 1749.3666,
+        "z": 32.81331
+      },
+      "watch": {
+        "x": -1589.2993,
+        "y": 2309.9775,
+        "z": 52.245853
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 993.1123,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_014",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": 441.0434,
+        "y": 2216.3032,
+        "z": -129.97928
+      },
+      "watch": {
+        "x": -1327.5248,
+        "y": 2217.043,
+        "z": 54.355423
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 2084.5654,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_015",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -350.25977,
+        "y": 1958.4153,
+        "z": -125.95688
+      },
+      "watch": {
+        "x": -233.93985,
+        "y": 2144.4907,
+        "z": -74.35071
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 1369.6033,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_016",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -1191.2637,
+        "y": 2637.2195,
+        "z": 74.44958
+      },
+      "watch": {
+        "x": -784.9013,
+        "y": 2209.935,
+        "z": -46.99106
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 245.98935,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_017",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": -1404.006,
+        "y": 2676.9136,
+        "z": 125.03125
+      },
+      "watch": {
+        "x": -1398.5017,
+        "y": 2488.8013,
+        "z": 55.704277
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 220.41536,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "postPlant_018",
+      "site": "",
+      "team": 2,
+      "anchor": {
+        "x": 1601.2627,
+        "y": 2721.3027,
+        "z": 106.80168
+      },
+      "watch": {
+        "x": 485.49036,
+        "y": 2350.561,
+        "z": 149.1278
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 631.1427,
+      "recorded": "2026-08-18 04:49:09Z"
+    }
+  ],
+  "ctClear": [
+    {
+      "name": "ctClear_001",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": 348.76727,
+        "y": 1719.7483,
+        "z": 72.854355
+      },
+      "watch": {
+        "x": 426.3206,
+        "y": 2598.1362,
+        "z": 149.12956
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 6,
+      "samples": 6,
+      "bombDist": 1081.3877,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_002",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -236.81572,
+        "y": 2118.4236,
+        "z": -126.09445
+      },
+      "watch": {
+        "x": 1258.1066,
+        "y": 2177.2808,
+        "z": 55.492405
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 6,
+      "samples": 6,
+      "bombDist": 1361.23,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_003",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -1960.5656,
+        "y": 1808.4708,
+        "z": 21.906359
+      },
+      "watch": {
+        "x": -1444.6868,
+        "y": 2484.1226,
+        "z": 58.736763
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 6,
+      "samples": 6,
+      "bombDist": 968.88837,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_004",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": 251.24509,
+        "y": 2176.7769,
+        "z": -124.88742
+      },
+      "watch": {
+        "x": -661.8101,
+        "y": 2163.9,
+        "z": -30.899263
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 6,
+      "samples": 6,
+      "bombDist": 1551.3882,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_005",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -421.6188,
+        "y": 2168.34,
+        "z": -125.22258
+      },
+      "watch": {
+        "x": -1129.9773,
+        "y": 2266.951,
+        "z": 34.346302
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 6,
+      "samples": 6,
+      "bombDist": 1254.4038,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_006",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": 1304.8682,
+        "y": 2268.7239,
+        "z": 10.660479
+      },
+      "watch": {
+        "x": 1554.6044,
+        "y": 2832.928,
+        "z": 167.74818
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 5,
+      "samples": 5,
+      "bombDist": 407.69867,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_007",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": 1215.24,
+        "y": 2247.3333,
+        "z": 9.119323
+      },
+      "watch": {
+        "x": 1428.2356,
+        "y": 2444.5447,
+        "z": 96.1728
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 4,
+      "samples": 4,
+      "bombDist": 349.04898,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_008",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": 371.28558,
+        "y": 1972.6016,
+        "z": 96.42893
+      },
+      "watch": {
+        "x": 1239.1606,
+        "y": 2790.0552,
+        "z": 168.90599
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 4,
+      "samples": 4,
+      "bombDist": 886.6826,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_009",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -357.4991,
+        "y": 2051.8027,
+        "z": -127.59197
+      },
+      "watch": {
+        "x": 428.94873,
+        "y": 2128.2593,
+        "z": -62.099228
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 4,
+      "samples": 4,
+      "bombDist": 1395.3622,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_010",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -1318.7256,
+        "y": 2217.7188,
+        "z": 2.2531161
+      },
+      "watch": {
+        "x": -2076.7834,
+        "y": 2159.146,
+        "z": 58.640244
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 4,
+      "samples": 4,
+      "bombDist": 525.76324,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_011",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -1319.8524,
+        "y": 2214.3152,
+        "z": 2.3554194
+      },
+      "watch": {
+        "x": 103.18108,
+        "y": 2191.9067,
+        "z": -74.565475
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 3,
+      "samples": 3,
+      "bombDist": 493.43457,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_012",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -552.32837,
+        "y": 2313.7832,
+        "z": -112.72463
+      },
+      "watch": {
+        "x": -410.187,
+        "y": 1567.7192,
+        "z": -74.04661
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 1084.8369,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_013",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -1672.1005,
+        "y": 760.65356,
+        "z": 31.153961
+      },
+      "watch": {
+        "x": -1885.5894,
+        "y": -424.92816,
+        "z": 133.25916
+      },
+      "crouch": false,
+      "stage": true,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 1877.168,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_014",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -1871.6422,
+        "y": 1127.519,
+        "z": 32.41677
+      },
+      "watch": {
+        "x": -2022.2515,
+        "y": 1805.4397,
+        "z": 70.545265
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 1424.502,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_015",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": -407.82312,
+        "y": 1560.9727,
+        "z": -126.3239
+      },
+      "watch": {
+        "x": -555.1908,
+        "y": 1846.4785,
+        "z": -68.232544
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 1647.3779,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "ctClear_016",
+      "site": "",
+      "team": 3,
+      "anchor": {
+        "x": 759.08734,
+        "y": 2265.7388,
+        "z": -47.28762
+      },
+      "watch": {
+        "x": -283.84454,
+        "y": 2119.0894,
+        "z": -74.962555
+      },
+      "crouch": false,
+      "stage": false,
+      "priority": 2,
+      "samples": 2,
+      "bombDist": 1264.4019,
+      "recorded": "2026-08-18 04:49:09Z"
+    }
+  ],
+  "preAim": [
+    {
+      "name": "preaim_001",
+      "team": 3,
+      "trigger": {
+        "x": -398.3241,
+        "y": 1609.3356,
+        "z": -126.27293
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -414.31226,
+        "y": 591.4654,
+        "z": 30.868832
+      },
+      "facingToleranceDeg": 100,
+      "priority": 70,
+      "samples": 70,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_002",
+      "team": 2,
+      "trigger": {
+        "x": 628.2954,
+        "y": 732.00507,
+        "z": 0.87024075
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1091.3931,
+        "y": 1035.5344,
+        "z": 51.017776
+      },
+      "facingToleranceDeg": 100,
+      "priority": 64,
+      "samples": 64,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_003",
+      "team": 2,
+      "trigger": {
+        "x": -448.15576,
+        "y": 130.61737,
+        "z": -1.3280902
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -394.35062,
+        "y": 1336.5387,
+        "z": -35.345417
+      },
+      "facingToleranceDeg": 100,
+      "priority": 50,
+      "samples": 50,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_004",
+      "team": 3,
+      "trigger": {
+        "x": -412.5796,
+        "y": 1034.0045,
+        "z": -59.626575
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -384.414,
+        "y": 136.7339,
+        "z": 51.387886
+      },
+      "facingToleranceDeg": 100,
+      "priority": 34,
+      "samples": 34,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_005",
+      "team": 3,
+      "trigger": {
+        "x": -1981.1002,
+        "y": 1458.0605,
+        "z": 31.965536
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1780.9681,
+        "y": 1093.2512,
+        "z": 85.481926
+      },
+      "facingToleranceDeg": 100,
+      "priority": 33,
+      "samples": 33,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_006",
+      "team": 3,
+      "trigger": {
+        "x": 666.1392,
+        "y": 779.99347,
+        "z": 0.5305779
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 626.71893,
+        "y": 545.3329,
+        "z": 53.0085
+      },
+      "facingToleranceDeg": 100,
+      "priority": 33,
+      "samples": 33,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_007",
+      "team": 3,
+      "trigger": {
+        "x": 675.5251,
+        "y": 336.72394,
+        "z": 0.8599485
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 364.70078,
+        "y": -106.69347,
+        "z": 50.76429
+      },
+      "facingToleranceDeg": 100,
+      "priority": 29,
+      "samples": 29,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_008",
+      "team": 3,
+      "trigger": {
+        "x": 1294.3983,
+        "y": 1209.1503,
+        "z": 0.06467167
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 740.56287,
+        "y": 832.14514,
+        "z": 52.41311
+      },
+      "facingToleranceDeg": 100,
+      "priority": 27,
+      "samples": 27,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_009",
+      "team": 2,
+      "trigger": {
+        "x": 1277.988,
+        "y": 1164.9626,
+        "z": -0.82119286
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1360.2552,
+        "y": 1854.178,
+        "z": 58.003593
+      },
+      "facingToleranceDeg": 100,
+      "priority": 27,
+      "samples": 27,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_010",
+      "team": 2,
+      "trigger": {
+        "x": -1976.2589,
+        "y": 1783.352,
+        "z": 29.39808
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1569.3704,
+        "y": 2193.8828,
+        "z": 58.12421
+      },
+      "facingToleranceDeg": 100,
+      "priority": 25,
+      "samples": 25,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_011",
+      "team": 2,
+      "trigger": {
+        "x": -437.52542,
+        "y": 310.30197,
+        "z": -2.0191665
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -402.48508,
+        "y": 1536.2289,
+        "z": -66.530594
+      },
+      "facingToleranceDeg": 100,
+      "priority": 24,
+      "samples": 24,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_012",
+      "team": 3,
+      "trigger": {
+        "x": -432.99756,
+        "y": 1845.5167,
+        "z": -126.197044
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -392.6312,
+        "y": 852.8148,
+        "z": 10.63285
+      },
+      "facingToleranceDeg": 100,
+      "priority": 22,
+      "samples": 22,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_013",
+      "team": 3,
+      "trigger": {
+        "x": -428.66235,
+        "y": 1378.9303,
+        "z": -123.79724
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -349.856,
+        "y": 619.16174,
+        "z": 38.147293
+      },
+      "facingToleranceDeg": 100,
+      "priority": 18,
+      "samples": 18,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_014",
+      "team": 2,
+      "trigger": {
+        "x": -444.28763,
+        "y": 780.67065,
+        "z": -5.459954
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -377.5237,
+        "y": 1694.1746,
+        "z": -64.91023
+      },
+      "facingToleranceDeg": 100,
+      "priority": 16,
+      "samples": 16,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_015",
+      "team": 2,
+      "trigger": {
+        "x": -1730.3418,
+        "y": 1027.6365,
+        "z": 34.54074
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1970.4259,
+        "y": 1393.626,
+        "z": 84.58093
+      },
+      "facingToleranceDeg": 100,
+      "priority": 16,
+      "samples": 16,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_016",
+      "team": 2,
+      "trigger": {
+        "x": -1940.6547,
+        "y": 1276.8462,
+        "z": 30.932043
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1974.914,
+        "y": 1760.6927,
+        "z": 78.67555
+      },
+      "facingToleranceDeg": 100,
+      "priority": 16,
+      "samples": 16,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_017",
+      "team": 3,
+      "trigger": {
+        "x": -1633.266,
+        "y": 1062.6243,
+        "z": 32.738625
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1717.6194,
+        "y": 279.90018,
+        "z": 87.10829
+      },
+      "facingToleranceDeg": 100,
+      "priority": 16,
+      "samples": 16,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_018",
+      "team": 2,
+      "trigger": {
+        "x": 669.78015,
+        "y": 310.26968,
+        "z": 0.84879357
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 641.1421,
+        "y": 647.5454,
+        "z": 52.87716
+      },
+      "facingToleranceDeg": 100,
+      "priority": 16,
+      "samples": 16,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_019",
+      "team": 3,
+      "trigger": {
+        "x": -407.5286,
+        "y": 2135.9678,
+        "z": -127.158165
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -433.30814,
+        "y": 1268.438,
+        "z": -32.623375
+      },
+      "facingToleranceDeg": 100,
+      "priority": 15,
+      "samples": 15,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_020",
+      "team": 2,
+      "trigger": {
+        "x": -346.13788,
+        "y": 2013.0977,
+        "z": -127.06888
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 289.22345,
+        "y": 2194.949,
+        "z": -45.31681
+      },
+      "facingToleranceDeg": 100,
+      "priority": 15,
+      "samples": 15,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_021",
+      "team": 3,
+      "trigger": {
+        "x": -1283.0118,
+        "y": 2225.3567,
+        "z": 3.6613705
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -430.10205,
+        "y": 2161.9697,
+        "z": -54.858273
+      },
+      "facingToleranceDeg": 100,
+      "priority": 15,
+      "samples": 15,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_022",
+      "team": 3,
+      "trigger": {
+        "x": 1006.28253,
+        "y": 982.0924,
+        "z": -0.25060385
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 622.7688,
+        "y": 730.16003,
+        "z": 52.92542
+      },
+      "facingToleranceDeg": 100,
+      "priority": 14,
+      "samples": 14,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_023",
+      "team": 2,
+      "trigger": {
+        "x": -1674.9421,
+        "y": 1073.4712,
+        "z": 31.542467
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1952.2561,
+        "y": 1331.8145,
+        "z": 84.24331
+      },
+      "facingToleranceDeg": 100,
+      "priority": 14,
+      "samples": 14,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_024",
+      "team": 2,
+      "trigger": {
+        "x": -1653.7399,
+        "y": 929.0004,
+        "z": 32.890556
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1859.5642,
+        "y": 1300.0854,
+        "z": 86.930725
+      },
+      "facingToleranceDeg": 100,
+      "priority": 14,
+      "samples": 14,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_025",
+      "team": 2,
+      "trigger": {
+        "x": -271.6382,
+        "y": 627.83325,
+        "z": 2.486043
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -366.60025,
+        "y": 1344.841,
+        "z": -35.810295
+      },
+      "facingToleranceDeg": 100,
+      "priority": 13,
+      "samples": 13,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_026",
+      "team": 2,
+      "trigger": {
+        "x": -419.03073,
+        "y": -62.378815,
+        "z": -0.7035488
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -350.08804,
+        "y": 1003.27527,
+        "z": 3.154446
+      },
+      "facingToleranceDeg": 100,
+      "priority": 13,
+      "samples": 13,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_027",
+      "team": 2,
+      "trigger": {
+        "x": 612.0575,
+        "y": 637.4962,
+        "z": 1.0367234
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 772.3763,
+        "y": 858.3108,
+        "z": 52.299755
+      },
+      "facingToleranceDeg": 100,
+      "priority": 13,
+      "samples": 13,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_028",
+      "team": 2,
+      "trigger": {
+        "x": -411.62753,
+        "y": 1273.0466,
+        "z": -116.90141
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -414.1093,
+        "y": 1687.8588,
+        "z": -72.86007
+      },
+      "facingToleranceDeg": 100,
+      "priority": 13,
+      "samples": 13,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_029",
+      "team": 3,
+      "trigger": {
+        "x": 1316.7908,
+        "y": 2038.3837,
+        "z": -2.2909577
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1298.9236,
+        "y": 1436.4548,
+        "z": 51.702766
+      },
+      "facingToleranceDeg": 100,
+      "priority": 13,
+      "samples": 13,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_030",
+      "team": 2,
+      "trigger": {
+        "x": -97.75428,
+        "y": 430.07697,
+        "z": -0.9484076
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -366.08542,
+        "y": 804.6154,
+        "z": 42.41897
+      },
+      "facingToleranceDeg": 100,
+      "priority": 12,
+      "samples": 12,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_031",
+      "team": 2,
+      "trigger": {
+        "x": -446.70465,
+        "y": 1651.9487,
+        "z": -125.09483
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -428.13354,
+        "y": 2109.3076,
+        "z": -72.54785
+      },
+      "facingToleranceDeg": 100,
+      "priority": 12,
+      "samples": 12,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_032",
+      "team": 3,
+      "trigger": {
+        "x": -2018.432,
+        "y": 1278.6365,
+        "z": 32.421585
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1648.1255,
+        "y": 1108.2728,
+        "z": 85.24891
+      },
+      "facingToleranceDeg": 100,
+      "priority": 11,
+      "samples": 11,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_033",
+      "team": 3,
+      "trigger": {
+        "x": -1204.4232,
+        "y": 2253.2197,
+        "z": 3.5547054
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1864.7098,
+        "y": 1938.3588,
+        "z": 55.940758
+      },
+      "facingToleranceDeg": 100,
+      "priority": 11,
+      "samples": 11,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_034",
+      "team": 2,
+      "trigger": {
+        "x": -1991.0471,
+        "y": 1638.1338,
+        "z": 32.788948
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1873.5859,
+        "y": 2147.3557,
+        "z": 57.04059
+      },
+      "facingToleranceDeg": 100,
+      "priority": 11,
+      "samples": 11,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_035",
+      "team": 3,
+      "trigger": {
+        "x": -1938.5868,
+        "y": 1866.9052,
+        "z": 7.056972
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1980.1146,
+        "y": 1475.5126,
+        "z": 83.72093
+      },
+      "facingToleranceDeg": 100,
+      "priority": 11,
+      "samples": 11,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_036",
+      "team": 3,
+      "trigger": {
+        "x": 1253.4156,
+        "y": 2064.5354,
+        "z": 0.99795145
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 413.51675,
+        "y": 2259.4062,
+        "z": 49.103806
+      },
+      "facingToleranceDeg": 100,
+      "priority": 11,
+      "samples": 11,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_037",
+      "team": 2,
+      "trigger": {
+        "x": 1274.8198,
+        "y": 2033.5214,
+        "z": 1.1160196
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 467.20276,
+        "y": 2293.3137,
+        "z": 25.386763
+      },
+      "facingToleranceDeg": 100,
+      "priority": 11,
+      "samples": 11,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_038",
+      "team": 3,
+      "trigger": {
+        "x": -383.9745,
+        "y": 1151.4226,
+        "z": -91.706436
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -410.18405,
+        "y": 288.863,
+        "z": 50.310215
+      },
+      "facingToleranceDeg": 100,
+      "priority": 10,
+      "samples": 10,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_039",
+      "team": 2,
+      "trigger": {
+        "x": -473.00403,
+        "y": 2075.2603,
+        "z": -124.65521
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1067.207,
+        "y": 2322.4678,
+        "z": 30.639517
+      },
+      "facingToleranceDeg": 100,
+      "priority": 10,
+      "samples": 10,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_040",
+      "team": 2,
+      "trigger": {
+        "x": -1857.1582,
+        "y": 1183.3655,
+        "z": 32.39121
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1998.0758,
+        "y": 1500.5927,
+        "z": 83.5933
+      },
+      "facingToleranceDeg": 100,
+      "priority": 10,
+      "samples": 10,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_041",
+      "team": 3,
+      "trigger": {
+        "x": -1810.5812,
+        "y": 1992.9589,
+        "z": -2.5290525
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1991.7635,
+        "y": 1728.0637,
+        "z": 84.24334
+      },
+      "facingToleranceDeg": 100,
+      "priority": 9,
+      "samples": 9,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_042",
+      "team": 2,
+      "trigger": {
+        "x": -1286.3131,
+        "y": 2224.6978,
+        "z": 3.7838533
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -241.03958,
+        "y": 2213.159,
+        "z": -25.945164
+      },
+      "facingToleranceDeg": 100,
+      "priority": 9,
+      "samples": 9,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_043",
+      "team": 3,
+      "trigger": {
+        "x": 838.4337,
+        "y": 895.048,
+        "z": 0.19096023
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 605.63135,
+        "y": 701.76746,
+        "z": 53.03679
+      },
+      "facingToleranceDeg": 100,
+      "priority": 9,
+      "samples": 9,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_044",
+      "team": 2,
+      "trigger": {
+        "x": -416.84454,
+        "y": 934.8724,
+        "z": -36.13847
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -431.55707,
+        "y": 1797.9545,
+        "z": -72.764175
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_045",
+      "team": 2,
+      "trigger": {
+        "x": -1895.1915,
+        "y": 1902.5587,
+        "z": 1.471011
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1318.9995,
+        "y": 2279.0579,
+        "z": 53.37939
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_046",
+      "team": 2,
+      "trigger": {
+        "x": -421.89505,
+        "y": -184.35326,
+        "z": 0.005402684
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -396.88492,
+        "y": 899.5669,
+        "z": 8.101033
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_047",
+      "team": 2,
+      "trigger": {
+        "x": -1676.5929,
+        "y": 508.78647,
+        "z": 22.926363
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1667.1211,
+        "y": 1056.7125,
+        "z": 85.193436
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_048",
+      "team": 2,
+      "trigger": {
+        "x": -399.3238,
+        "y": 1471.9476,
+        "z": -126.39436
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -439.60022,
+        "y": 1870.7749,
+        "z": -73.83893
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_049",
+      "team": 2,
+      "trigger": {
+        "x": -1899.1814,
+        "y": -614.0642,
+        "z": 123.97897
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1665.0714,
+        "y": 786.22125,
+        "z": 83.46903
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_050",
+      "team": 3,
+      "trigger": {
+        "x": -1679.6044,
+        "y": 933.02563,
+        "z": 31.972458
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1759.7773,
+        "y": -94.53251,
+        "z": 123.82113
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_051",
+      "team": 2,
+      "trigger": {
+        "x": -199.19467,
+        "y": 962.2185,
+        "z": 5.2226224
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -535.7659,
+        "y": 2002.8582,
+        "z": -68.733574
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_052",
+      "team": 2,
+      "trigger": {
+        "x": -337.18555,
+        "y": 1072.1084,
+        "z": -67.11707
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -475.64337,
+        "y": 1815.5798,
+        "z": -69.55261
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_053",
+      "team": 3,
+      "trigger": {
+        "x": 810.34735,
+        "y": 2082.5962,
+        "z": -43.044403
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -743.6803,
+        "y": 2233.9387,
+        "z": 18.18354
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_054",
+      "team": 3,
+      "trigger": {
+        "x": 641.8535,
+        "y": 2275.7302,
+        "z": -51.604115
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -350.48575,
+        "y": 2059.8135,
+        "z": -73.29302
+      },
+      "facingToleranceDeg": 100,
+      "priority": 8,
+      "samples": 8,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_055",
+      "team": 2,
+      "trigger": {
+        "x": 810.3051,
+        "y": 859.1003,
+        "z": 0.12684348
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1345.0721,
+        "y": 1186.7437,
+        "z": 48.2014
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_056",
+      "team": 2,
+      "trigger": {
+        "x": 471.54532,
+        "y": 2251.4116,
+        "z": 101.09542
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1001.4657,
+        "y": 2287.4138,
+        "z": 63.192
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_057",
+      "team": 2,
+      "trigger": {
+        "x": -219.99794,
+        "y": 483.1869,
+        "z": -1.6087458
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -376.806,
+        "y": 1143.4758,
+        "z": -21.049232
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_058",
+      "team": 3,
+      "trigger": {
+        "x": -1754.372,
+        "y": 1337.1077,
+        "z": 39.55301
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1664.3933,
+        "y": 930.77484,
+        "z": 85.18165
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_059",
+      "team": 3,
+      "trigger": {
+        "x": -554.35895,
+        "y": 2118.0088,
+        "z": -120.53022
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -258.34845,
+        "y": 1076.0571,
+        "z": 19.188778
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_060",
+      "team": 3,
+      "trigger": {
+        "x": -1661.0382,
+        "y": 725.4419,
+        "z": 32.016373
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1960.4584,
+        "y": -473.3638,
+        "z": 147.83499
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_061",
+      "team": 3,
+      "trigger": {
+        "x": -1890.004,
+        "y": 1342.0795,
+        "z": 34.598236
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1678.8578,
+        "y": 970.7595,
+        "z": 85.36559
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_062",
+      "team": 3,
+      "trigger": {
+        "x": 1147.5641,
+        "y": 1097.2295,
+        "z": -0.86821383
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 634.43646,
+        "y": 745.2335,
+        "z": 52.82689
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_063",
+      "team": 2,
+      "trigger": {
+        "x": -1710.4181,
+        "y": 1077.5681,
+        "z": 32.319397
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1269.1547,
+        "y": 1094.2161,
+        "z": 65.14403
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_064",
+      "team": 3,
+      "trigger": {
+        "x": -1356.4957,
+        "y": 1100.0569,
+        "z": 35.134968
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1781.5918,
+        "y": 1116.5396,
+        "z": 84.607216
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_065",
+      "team": 3,
+      "trigger": {
+        "x": -200.51912,
+        "y": 503.91452,
+        "z": -0.8303011
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 333.12064,
+        "y": 198.60077,
+        "z": 53.480682
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_066",
+      "team": 2,
+      "trigger": {
+        "x": 493.18164,
+        "y": 2384.9302,
+        "z": 101.23817
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 963.535,
+        "y": 2143.7244,
+        "z": 39.48729
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_067",
+      "team": 3,
+      "trigger": {
+        "x": -421.99826,
+        "y": 1987.6094,
+        "z": -125.60227
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -420.04788,
+        "y": 1246.6556,
+        "z": -38.81294
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_068",
+      "team": 2,
+      "trigger": {
+        "x": 486.68036,
+        "y": 154.40965,
+        "z": -2.9560606
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 673.4222,
+        "y": 334.3336,
+        "z": 52.875275
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_069",
+      "team": 2,
+      "trigger": {
+        "x": -1858.263,
+        "y": -358.27884,
+        "z": 68.31923
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1697.7006,
+        "y": 688.89465,
+        "z": 75.32724
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_070",
+      "team": 3,
+      "trigger": {
+        "x": -1982.4547,
+        "y": 1662.4689,
+        "z": 32.246716
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1938.8737,
+        "y": 1246.5414,
+        "z": 83.40647
+      },
+      "facingToleranceDeg": 100,
+      "priority": 7,
+      "samples": 7,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_071",
+      "team": 3,
+      "trigger": {
+        "x": -398.7156,
+        "y": 786.9439,
+        "z": -5.2888565
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -12.849415,
+        "y": 378.95874,
+        "z": 52.7183
+      },
+      "facingToleranceDeg": 100,
+      "priority": 6,
+      "samples": 6,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_072",
+      "team": 2,
+      "trigger": {
+        "x": -295.11026,
+        "y": 2169.909,
+        "z": -126.404236
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 726.3161,
+        "y": 2213.3364,
+        "z": -2.854416
+      },
+      "facingToleranceDeg": 100,
+      "priority": 6,
+      "samples": 6,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_073",
+      "team": 2,
+      "trigger": {
+        "x": -466.53842,
+        "y": 1790.5203,
+        "z": -123.38634
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -374.12762,
+        "y": 2161.1958,
+        "z": -73.725624
+      },
+      "facingToleranceDeg": 100,
+      "priority": 6,
+      "samples": 6,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_074",
+      "team": 2,
+      "trigger": {
+        "x": -481.0308,
+        "y": 2144.9568,
+        "z": -124.8741
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 756.0407,
+        "y": 2145.6572,
+        "z": -12.925447
+      },
+      "facingToleranceDeg": 100,
+      "priority": 6,
+      "samples": 6,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_075",
+      "team": 2,
+      "trigger": {
+        "x": -189.30745,
+        "y": 1371.8857,
+        "z": 0.10164098
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -233.37532,
+        "y": 799.41736,
+        "z": 51.010998
+      },
+      "facingToleranceDeg": 100,
+      "priority": 6,
+      "samples": 6,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_076",
+      "team": 3,
+      "trigger": {
+        "x": -150.22093,
+        "y": 484.13046,
+        "z": -0.6753849
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -249.02795,
+        "y": 1149.9042,
+        "z": 41.15518
+      },
+      "facingToleranceDeg": 100,
+      "priority": 6,
+      "samples": 6,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_077",
+      "team": 2,
+      "trigger": {
+        "x": 615.81573,
+        "y": 539.0846,
+        "z": 1.0685073
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 647.0875,
+        "y": 763.66095,
+        "z": 52.6956
+      },
+      "facingToleranceDeg": 100,
+      "priority": 6,
+      "samples": 6,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_078",
+      "team": 3,
+      "trigger": {
+        "x": -388.6049,
+        "y": 843.59283,
+        "z": -15.059833
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -430.9892,
+        "y": -82.27495,
+        "z": 51.691166
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_079",
+      "team": 3,
+      "trigger": {
+        "x": -314.12183,
+        "y": 723.1511,
+        "z": 6.714244
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -369.99854,
+        "y": 93.896805,
+        "z": 50.96453
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_080",
+      "team": 3,
+      "trigger": {
+        "x": 1285.3883,
+        "y": 1356.4441,
+        "z": 0.04251776
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1243.0995,
+        "y": 1031.2339,
+        "z": 51.439846
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_081",
+      "team": 3,
+      "trigger": {
+        "x": -2020.1008,
+        "y": 1830.5776,
+        "z": 25.380173
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1939.4562,
+        "y": 1272.6136,
+        "z": 83.18017
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_082",
+      "team": 2,
+      "trigger": {
+        "x": -1970.6364,
+        "y": 1407.2954,
+        "z": 31.686764
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1970.5751,
+        "y": 1848.4417,
+        "z": 66.3051
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_083",
+      "team": 3,
+      "trigger": {
+        "x": 874.31573,
+        "y": 2240.7222,
+        "z": -18.75948
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 16.88852,
+        "y": 2163.155,
+        "z": 14.527188
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_084",
+      "team": 2,
+      "trigger": {
+        "x": -835.8308,
+        "y": -834.84515,
+        "z": 117.5619
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 146.39905,
+        "y": -619.74646,
+        "z": 53.47297
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_085",
+      "team": 2,
+      "trigger": {
+        "x": -260.97095,
+        "y": 799.4573,
+        "z": -3.2547307
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -407.32898,
+        "y": 1635.7667,
+        "z": -48.048637
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_086",
+      "team": 3,
+      "trigger": {
+        "x": 188.61276,
+        "y": -410.64117,
+        "z": 0.42647523
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -366.39108,
+        "y": -722.3828,
+        "z": 134.28984
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_087",
+      "team": 3,
+      "trigger": {
+        "x": -3.138544,
+        "y": 2157.3037,
+        "z": -127.27345
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -733.84906,
+        "y": 2142.3271,
+        "z": -22.743544
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_088",
+      "team": 2,
+      "trigger": {
+        "x": -1117.1957,
+        "y": 2257.1113,
+        "z": -1.2150866
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 367.3273,
+        "y": 2088.6335,
+        "z": -41.422585
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_089",
+      "team": 3,
+      "trigger": {
+        "x": 841.9399,
+        "y": 2408.6057,
+        "z": 129.2899
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 346.98926,
+        "y": 1930.1887,
+        "z": 148.88159
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_090",
+      "team": 3,
+      "trigger": {
+        "x": -1148.1992,
+        "y": 1101.6277,
+        "z": -15.827826
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1581.7881,
+        "y": 1095.104,
+        "z": 86.26382
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_091",
+      "team": 3,
+      "trigger": {
+        "x": -359.44104,
+        "y": 493.77808,
+        "z": -3.5266783
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 446.4776,
+        "y": 241.94466,
+        "z": 51.193604
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_092",
+      "team": 2,
+      "trigger": {
+        "x": 216.85464,
+        "y": 269.63028,
+        "z": 3.1125772
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -309.27728,
+        "y": 544.84436,
+        "z": 51.05896
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_093",
+      "team": 2,
+      "trigger": {
+        "x": -114.474045,
+        "y": 2102.0378,
+        "z": -125.56965
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 693.5138,
+        "y": 2164.436,
+        "z": 10.194313
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_094",
+      "team": 3,
+      "trigger": {
+        "x": -1097.9885,
+        "y": 2263.7412,
+        "z": -5.293957
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 17.30371,
+        "y": 2145.2927,
+        "z": -39.772316
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_095",
+      "team": 3,
+      "trigger": {
+        "x": 1460.638,
+        "y": 1807.9572,
+        "z": -7.361782
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1246.6302,
+        "y": 1086.1901,
+        "z": 51.74054
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_096",
+      "team": 3,
+      "trigger": {
+        "x": 211.17549,
+        "y": -562.8977,
+        "z": 0.63834566
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -679.2798,
+        "y": -767.7371,
+        "z": 179.0293
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_097",
+      "team": 2,
+      "trigger": {
+        "x": 163.08951,
+        "y": -498.38635,
+        "z": 0.38317394
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 658.8037,
+        "y": 295.70465,
+        "z": 52.97021
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_098",
+      "team": 2,
+      "trigger": {
+        "x": -437.32562,
+        "y": 600.43524,
+        "z": -1.3457125
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -362.00272,
+        "y": 1431.4979,
+        "z": -45.929306
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_099",
+      "team": 2,
+      "trigger": {
+        "x": 310.42398,
+        "y": 1915.3545,
+        "z": 109.50546
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 752.65344,
+        "y": 2391.0981,
+        "z": 167.05708
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_100",
+      "team": 2,
+      "trigger": {
+        "x": -1338.9939,
+        "y": 1128.5153,
+        "z": 34.505093
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1812.6632,
+        "y": 1152.6752,
+        "z": 83.70901
+      },
+      "facingToleranceDeg": 100,
+      "priority": 5,
+      "samples": 5,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_101",
+      "team": 3,
+      "trigger": {
+        "x": 1231.6178,
+        "y": 1023.2794,
+        "z": -1.9829211
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 685.3876,
+        "y": 779.82654,
+        "z": 52.7444
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_102",
+      "team": 3,
+      "trigger": {
+        "x": -1471.1396,
+        "y": 2157.5964,
+        "z": -0.8501355
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1953.7156,
+        "y": 1806.6106,
+        "z": 81.71811
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_103",
+      "team": 3,
+      "trigger": {
+        "x": -1070.1133,
+        "y": 2329.1553,
+        "z": -8.054528
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1544.7164,
+        "y": 2113.2666,
+        "z": 51.799755
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_104",
+      "team": 3,
+      "trigger": {
+        "x": 93.272064,
+        "y": 396.5926,
+        "z": -0.6267664
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 427.7725,
+        "y": 45.92767,
+        "z": 50.254555
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_105",
+      "team": 3,
+      "trigger": {
+        "x": -1745.0406,
+        "y": 2202.4932,
+        "z": -1.924556
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1987.425,
+        "y": 1699.3804,
+        "z": 84.1461
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_106",
+      "team": 2,
+      "trigger": {
+        "x": 382.7655,
+        "y": -32.287582,
+        "z": -3.7644181
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 682.6565,
+        "y": 357.8427,
+        "z": 52.81701
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_107",
+      "team": 3,
+      "trigger": {
+        "x": 1265.9548,
+        "y": 2624.205,
+        "z": 102.09264
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 435.07544,
+        "y": 2408.5144,
+        "z": 148.61955
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_108",
+      "team": 3,
+      "trigger": {
+        "x": 87.74253,
+        "y": -664.3426,
+        "z": 3.0412974
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -833.8569,
+        "y": -787.1036,
+        "z": 171.89842
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_109",
+      "team": 3,
+      "trigger": {
+        "x": -318.41263,
+        "y": 613.82544,
+        "z": -0.0684312
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 31.323824,
+        "y": 378.11554,
+        "z": 50.90876
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_110",
+      "team": 3,
+      "trigger": {
+        "x": -195.29813,
+        "y": 1016.31006,
+        "z": -12.115362
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -364.287,
+        "y": 143.27248,
+        "z": 50.968777
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_111",
+      "team": 3,
+      "trigger": {
+        "x": 183.75505,
+        "y": 2236.067,
+        "z": -124.57216
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -327.54095,
+        "y": 2057.531,
+        "z": -74.362495
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_112",
+      "team": 2,
+      "trigger": {
+        "x": -240.42998,
+        "y": 1367.3063,
+        "z": 9.058572
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 151.21196,
+        "y": 1455.1885,
+        "z": 52.40911
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_113",
+      "team": 2,
+      "trigger": {
+        "x": -352.59555,
+        "y": 454.90372,
+        "z": -4.1361985
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -351.1806,
+        "y": 1267.296,
+        "z": -22.595215
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_114",
+      "team": 3,
+      "trigger": {
+        "x": -193.23967,
+        "y": 1431.5106,
+        "z": 7.9219217
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -431.17456,
+        "y": 426.5574,
+        "z": 52.224052
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_115",
+      "team": 3,
+      "trigger": {
+        "x": -1867.8015,
+        "y": 1171.2937,
+        "z": 32.36302
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1687.5217,
+        "y": 996.81274,
+        "z": 83.800766
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_116",
+      "team": 2,
+      "trigger": {
+        "x": 1329.9302,
+        "y": 1627.4922,
+        "z": -2.826729
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1302.2255,
+        "y": 2138.878,
+        "z": 56.83105
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_117",
+      "team": 2,
+      "trigger": {
+        "x": -394.97208,
+        "y": 653.4441,
+        "z": -0.040428877
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -417.92474,
+        "y": 1635.0962,
+        "z": -74.16205
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_118",
+      "team": 2,
+      "trigger": {
+        "x": 425.70667,
+        "y": 2057.2485,
+        "z": 95.88852
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1246.5833,
+        "y": 2466.6943,
+        "z": 164.76942
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_119",
+      "team": 2,
+      "trigger": {
+        "x": 309.99323,
+        "y": 1760.1146,
+        "z": 84.673386
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 729.43335,
+        "y": 2537.2656,
+        "z": 158.03032
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_120",
+      "team": 3,
+      "trigger": {
+        "x": -550.6386,
+        "y": 2124.003,
+        "z": -121.22028
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 219.7359,
+        "y": 2097.3572,
+        "z": -71.92737
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_121",
+      "team": 3,
+      "trigger": {
+        "x": -417.60873,
+        "y": 1425.2344,
+        "z": -126.270584
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -760.34827,
+        "y": 1411.0367,
+        "z": -60.42183
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_122",
+      "team": 2,
+      "trigger": {
+        "x": -422.47272,
+        "y": -305.32114,
+        "z": 0.80885416
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -395.05322,
+        "y": 931.97205,
+        "z": 15.963561
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_123",
+      "team": 2,
+      "trigger": {
+        "x": 504.15524,
+        "y": 190.78027,
+        "z": -1.2935977
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -244.83693,
+        "y": 494.04807,
+        "z": 49.851826
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_124",
+      "team": 2,
+      "trigger": {
+        "x": -398.01593,
+        "y": -472.10785,
+        "z": 2.7031178
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -424.14706,
+        "y": 20.04449,
+        "z": 51.023415
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_125",
+      "team": 2,
+      "trigger": {
+        "x": -376.5592,
+        "y": 452.36865,
+        "z": -4.720807
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 270.48834,
+        "y": 278.7952,
+        "z": 51.201504
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_126",
+      "team": 2,
+      "trigger": {
+        "x": 1289.5234,
+        "y": 2179.193,
+        "z": 2.4466085
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 337.2412,
+        "y": 2089.7158,
+        "z": -49.72734
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_127",
+      "team": 3,
+      "trigger": {
+        "x": 129.85033,
+        "y": 2077.2324,
+        "z": -123.43847
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1001.0145,
+        "y": 2178.8894,
+        "z": 21.066877
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_128",
+      "team": 3,
+      "trigger": {
+        "x": -1336.9673,
+        "y": 2241.45,
+        "z": 2.7390516
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1803.492,
+        "y": 1926.4534,
+        "z": 62.664165
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_129",
+      "team": 3,
+      "trigger": {
+        "x": -200.45665,
+        "y": -709.1984,
+        "z": 53.162563
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1324.9556,
+        "y": -795.3135,
+        "z": 170.40396
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_130",
+      "team": 3,
+      "trigger": {
+        "x": -421.49094,
+        "y": -130.16647,
+        "z": -0.49562997
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -375.60345,
+        "y": -532.9944,
+        "z": 77.720215
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_131",
+      "team": 3,
+      "trigger": {
+        "x": 574.8044,
+        "y": 213.32443,
+        "z": -0.015014052
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -230.95123,
+        "y": 429.7077,
+        "z": 48.90802
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_132",
+      "team": 3,
+      "trigger": {
+        "x": 1419.6475,
+        "y": 1297.3073,
+        "z": -11.155165
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 638.8192,
+        "y": 759.8727,
+        "z": 52.817383
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_133",
+      "team": 3,
+      "trigger": {
+        "x": -729.8185,
+        "y": 2181.896,
+        "z": -114.99534
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1010.1678,
+        "y": 2132.241,
+        "z": 20.62064
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_134",
+      "team": 3,
+      "trigger": {
+        "x": 794.2948,
+        "y": 2151.6758,
+        "z": -46.41935
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1312.7216,
+        "y": 2117.6733,
+        "z": 50.948315
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_135",
+      "team": 3,
+      "trigger": {
+        "x": -250.72337,
+        "y": 2112.3745,
+        "z": -126.88996
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -458.0879,
+        "y": 1810.2,
+        "z": -71.40603
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_136",
+      "team": 3,
+      "trigger": {
+        "x": 616.11755,
+        "y": 205.28235,
+        "z": -0.6535188
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 102.058266,
+        "y": -367.57852,
+        "z": 58.615173
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_137",
+      "team": 2,
+      "trigger": {
+        "x": 1297.6602,
+        "y": 1853.7007,
+        "z": 1.3908949
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1288.6582,
+        "y": 2243.3733,
+        "z": 80.79531
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_138",
+      "team": 3,
+      "trigger": {
+        "x": -600.9431,
+        "y": 2261.8198,
+        "z": -118.62214
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -356.77722,
+        "y": 1330.8301,
+        "z": -21.724102
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_139",
+      "team": 3,
+      "trigger": {
+        "x": -492.76984,
+        "y": 1469.536,
+        "z": -114.76204
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -410.76556,
+        "y": 897.2729,
+        "z": 21.51527
+      },
+      "facingToleranceDeg": 100,
+      "priority": 4,
+      "samples": 4,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_140",
+      "team": 3,
+      "trigger": {
+        "x": -322.35477,
+        "y": 917.12854,
+        "z": -25.24992
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -140.21039,
+        "y": 505.61133,
+        "z": 52.0514
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_141",
+      "team": 2,
+      "trigger": {
+        "x": -816.4304,
+        "y": 1435.3698,
+        "z": -112.20166
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -307.83127,
+        "y": 1456.1327,
+        "z": -31.653473
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_142",
+      "team": 2,
+      "trigger": {
+        "x": -507.87018,
+        "y": 1439.646,
+        "z": -115.96317
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -259.67178,
+        "y": 918.5292,
+        "z": 30.257395
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_143",
+      "team": 2,
+      "trigger": {
+        "x": 1313.3898,
+        "y": 2466.2131,
+        "z": 84.421585
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1323.0863,
+        "y": 2071.936,
+        "z": 54.136944
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_144",
+      "team": 2,
+      "trigger": {
+        "x": 1038.6764,
+        "y": 936.5197,
+        "z": -0.5805309
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1307.35,
+        "y": 1258.9447,
+        "z": 53.03125
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_145",
+      "team": 2,
+      "trigger": {
+        "x": 1253.3715,
+        "y": 866.1956,
+        "z": -0.18642004
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1296.5137,
+        "y": 1836.5996,
+        "z": 93.36586
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_146",
+      "team": 3,
+      "trigger": {
+        "x": 1327.5563,
+        "y": 1679.1272,
+        "z": -3.880832
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1269.9377,
+        "y": 1187.8336,
+        "z": 52.37574
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_147",
+      "team": 2,
+      "trigger": {
+        "x": -26.446083,
+        "y": -861.15576,
+        "z": 2.9743764
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 481.7132,
+        "y": 101.97406,
+        "z": 54.68245
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_148",
+      "team": 2,
+      "trigger": {
+        "x": -242.91078,
+        "y": 1366.4517,
+        "z": 1.3773469
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -414.031,
+        "y": 1589.16,
+        "z": -74.021126
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_149",
+      "team": 2,
+      "trigger": {
+        "x": 341.08978,
+        "y": 2166.7808,
+        "z": 97.0186
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1002.52057,
+        "y": 2430.4875,
+        "z": 109.032455
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_150",
+      "team": 2,
+      "trigger": {
+        "x": 508.09628,
+        "y": 90.883545,
+        "z": -4.668813
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -68.60218,
+        "y": 416.63788,
+        "z": 50.15959
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_151",
+      "team": 2,
+      "trigger": {
+        "x": -308.85223,
+        "y": -691.27124,
+        "z": 79.53922
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 99.80137,
+        "y": -455.71268,
+        "z": 52.618176
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_152",
+      "team": 2,
+      "trigger": {
+        "x": 234.00587,
+        "y": 59.104183,
+        "z": 4.0564184
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 647.07135,
+        "y": 239.0495,
+        "z": 51.884663
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_153",
+      "team": 2,
+      "trigger": {
+        "x": -530.398,
+        "y": 1948.2988,
+        "z": -119.89561
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 408.88193,
+        "y": 2232.2605,
+        "z": -43.255013
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_154",
+      "team": 2,
+      "trigger": {
+        "x": -482.6721,
+        "y": 1058.76,
+        "z": -62.83871
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -281.5873,
+        "y": 1439.3065,
+        "z": -31.899874
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_155",
+      "team": 2,
+      "trigger": {
+        "x": 516.5105,
+        "y": 2100.6843,
+        "z": -115.30136
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -419.61325,
+        "y": 2142.137,
+        "z": -71.81308
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_156",
+      "team": 2,
+      "trigger": {
+        "x": 359.65475,
+        "y": 2112.6377,
+        "z": -125.1685
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1048.5427,
+        "y": 2175.5845,
+        "z": 13.374892
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_157",
+      "team": 2,
+      "trigger": {
+        "x": -76.63159,
+        "y": -669.9202,
+        "z": 24.337883
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 379.70462,
+        "y": -46.889305,
+        "z": 50.86552
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_158",
+      "team": 3,
+      "trigger": {
+        "x": 1032.4617,
+        "y": 2174.7449,
+        "z": 4.542912
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 94.22241,
+        "y": 2189.2393,
+        "z": 0.1481374
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_159",
+      "team": 2,
+      "trigger": {
+        "x": 225.69608,
+        "y": 73.371254,
+        "z": 5.5681033
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 12.03226,
+        "y": 389.6795,
+        "z": 52.734455
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_160",
+      "team": 2,
+      "trigger": {
+        "x": 1297.453,
+        "y": 2036.8909,
+        "z": -1.0045229
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1362.3038,
+        "y": 1637.0646,
+        "z": 46.372787
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_161",
+      "team": 2,
+      "trigger": {
+        "x": -1347.6093,
+        "y": 2190.237,
+        "z": 1.8413943
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1885.4529,
+        "y": 1927.4104,
+        "z": 58.747215
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_162",
+      "team": 3,
+      "trigger": {
+        "x": -220.24203,
+        "y": 1041.3228,
+        "z": 11.255699
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -286.67554,
+        "y": 1426.3699,
+        "z": 10.454118
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_163",
+      "team": 3,
+      "trigger": {
+        "x": 626.4145,
+        "y": 708.55084,
+        "z": 0.9219013
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 686.9696,
+        "y": 357.62442,
+        "z": 52.795364
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_164",
+      "team": 2,
+      "trigger": {
+        "x": -443.28027,
+        "y": -672.2065,
+        "z": 126.80399
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 136.48509,
+        "y": -491.62897,
+        "z": 52.44445
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_165",
+      "team": 3,
+      "trigger": {
+        "x": 526.83936,
+        "y": 75.33376,
+        "z": -4.6970463
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 74.01205,
+        "y": 376.22284,
+        "z": 51.39658
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_166",
+      "team": 3,
+      "trigger": {
+        "x": 398.2522,
+        "y": 2114.2397,
+        "z": -126.35681
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -854.9977,
+        "y": 2205.1191,
+        "z": 10.647335
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_167",
+      "team": 2,
+      "trigger": {
+        "x": -471.51657,
+        "y": 427.65088,
+        "z": 0.37273374
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -348.52155,
+        "y": 1486.7682,
+        "z": -32.201412
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_168",
+      "team": 3,
+      "trigger": {
+        "x": -535.46936,
+        "y": 1995.4026,
+        "z": -119.36103
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -258.8803,
+        "y": 1189.0751,
+        "z": 10.48666
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_169",
+      "team": 2,
+      "trigger": {
+        "x": -217.80824,
+        "y": 1096.5479,
+        "z": 10.481346
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -515.86865,
+        "y": 1687.8728,
+        "z": -66.58732
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_170",
+      "team": 3,
+      "trigger": {
+        "x": 639.2157,
+        "y": 2102.275,
+        "z": -85.7466
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -345.47815,
+        "y": 2135.8547,
+        "z": -72.27798
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_171",
+      "team": 3,
+      "trigger": {
+        "x": 1436.189,
+        "y": 2378.4272,
+        "z": 18.74405
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1316.7626,
+        "y": 1366.7744,
+        "z": 52.11072
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_172",
+      "team": 3,
+      "trigger": {
+        "x": 1389.5024,
+        "y": 1553.421,
+        "z": -6.63238
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1277.5311,
+        "y": 1085.0338,
+        "z": 49.38059
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_173",
+      "team": 2,
+      "trigger": {
+        "x": 688.8198,
+        "y": 400.66364,
+        "z": 0.76174766
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 528.58984,
+        "y": 113.17233,
+        "z": 49.95142
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_174",
+      "team": 3,
+      "trigger": {
+        "x": -494.7552,
+        "y": 1093.3173,
+        "z": -69.543594
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -444.98813,
+        "y": 144.74368,
+        "z": 50.632233
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_175",
+      "team": 3,
+      "trigger": {
+        "x": 1368.7444,
+        "y": 1895.7748,
+        "z": -5.619109
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1305.1384,
+        "y": 2185.712,
+        "z": 73.73617
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_176",
+      "team": 2,
+      "trigger": {
+        "x": 1162.0413,
+        "y": 2148.037,
+        "z": 2.383883
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 8.547147,
+        "y": 2107.2915,
+        "z": -44.269543
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_177",
+      "team": 2,
+      "trigger": {
+        "x": 589.55945,
+        "y": 248.10191,
+        "z": 0.14420374
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 716.94196,
+        "y": 361.5575,
+        "z": 52.638264
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_178",
+      "team": 3,
+      "trigger": {
+        "x": 674.18964,
+        "y": 2353.128,
+        "z": -8.429454
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1297.1349,
+        "y": 1998.9426,
+        "z": 53.227108
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_179",
+      "team": 2,
+      "trigger": {
+        "x": -1766.0156,
+        "y": 455.89038,
+        "z": 17.500036
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1619.7867,
+        "y": 1025.7009,
+        "z": 85.06004
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_180",
+      "team": 3,
+      "trigger": {
+        "x": 1359.607,
+        "y": 1837.8083,
+        "z": -5.4592233
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1312.2295,
+        "y": 1175.8334,
+        "z": 49.09204
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_181",
+      "team": 3,
+      "trigger": {
+        "x": -1936.9259,
+        "y": 1876.8691,
+        "z": 8.388322
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1154.7847,
+        "y": 2294.131,
+        "z": 38.29248
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_182",
+      "team": 2,
+      "trigger": {
+        "x": -198.55287,
+        "y": 1189.9185,
+        "z": -0.05658428
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -187.16153,
+        "y": 708.3562,
+        "z": 52.79265
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_183",
+      "team": 3,
+      "trigger": {
+        "x": 624.0647,
+        "y": 554.34894,
+        "z": 1.0168047
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 682.9552,
+        "y": 312.67154,
+        "z": 52.840935
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_184",
+      "team": 3,
+      "trigger": {
+        "x": -54.527187,
+        "y": 1396.1777,
+        "z": -0.18203394
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -297.31293,
+        "y": 1178.3094,
+        "z": 35.32085
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_185",
+      "team": 2,
+      "trigger": {
+        "x": -202.13487,
+        "y": 1000.4061,
+        "z": 11.536401
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -240.89508,
+        "y": 348.44693,
+        "z": 51.383648
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_186",
+      "team": 3,
+      "trigger": {
+        "x": -229.84029,
+        "y": 713.61304,
+        "z": 1.2587478
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -279.6004,
+        "y": 1327.4146,
+        "z": 14.873898
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_187",
+      "team": 3,
+      "trigger": {
+        "x": -179.27667,
+        "y": 1316.8359,
+        "z": 0.17535353
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -342.9828,
+        "y": 553.65564,
+        "z": 47.29841
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_188",
+      "team": 3,
+      "trigger": {
+        "x": 317.16974,
+        "y": 1548.481,
+        "z": 3.0587113
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -33.339073,
+        "y": 1396.6205,
+        "z": 62.403595
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_189",
+      "team": 2,
+      "trigger": {
+        "x": -206.05336,
+        "y": 2088.1836,
+        "z": -126.539955
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 498.83218,
+        "y": 2167.64,
+        "z": -51.106422
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_190",
+      "team": 2,
+      "trigger": {
+        "x": 341.94785,
+        "y": 1620.8674,
+        "z": 15.509551
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 320.67435,
+        "y": 1986.5154,
+        "z": 148.93304
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_191",
+      "team": 3,
+      "trigger": {
+        "x": 1354.6372,
+        "y": 2774.234,
+        "z": 115.94445
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1289.0043,
+        "y": 1284.354,
+        "z": 53.16372
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_192",
+      "team": 3,
+      "trigger": {
+        "x": 1413.6215,
+        "y": 979.431,
+        "z": -8.132576
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 724.9544,
+        "y": 811.7995,
+        "z": 52.300198
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_193",
+      "team": 3,
+      "trigger": {
+        "x": 363.68112,
+        "y": 2002.8834,
+        "z": 96.21109
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 332.22415,
+        "y": 1541.8978,
+        "z": 55.015316
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_194",
+      "team": 2,
+      "trigger": {
+        "x": 832.32745,
+        "y": 2087.7915,
+        "z": -37.4865
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -624.20294,
+        "y": 2151.485,
+        "z": -12.001971
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_195",
+      "team": 2,
+      "trigger": {
+        "x": -1274.0422,
+        "y": 2663.7185,
+        "z": 130.03125
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1641.8586,
+        "y": 2687.2336,
+        "z": 67.41992
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_196",
+      "team": 3,
+      "trigger": {
+        "x": -297.21985,
+        "y": 1055.4921,
+        "z": -59.840816
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -421.69568,
+        "y": -84.135895,
+        "z": 51.49949
+      },
+      "facingToleranceDeg": 100,
+      "priority": 3,
+      "samples": 3,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_197",
+      "team": 3,
+      "trigger": {
+        "x": -352.4889,
+        "y": 1072.4807,
+        "z": -67.96023
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -481.29535,
+        "y": 1634.939,
+        "z": -66.84406
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_198",
+      "team": 2,
+      "trigger": {
+        "x": -1886.5858,
+        "y": -177.75252,
+        "z": 19.02933
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1654.7346,
+        "y": 671.1476,
+        "z": 69.202614
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_199",
+      "team": 3,
+      "trigger": {
+        "x": -1727.5259,
+        "y": 164.4289,
+        "z": 0.079346776
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1879.971,
+        "y": -308.4349,
+        "z": 106.59396
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_200",
+      "team": 3,
+      "trigger": {
+        "x": 1309.0215,
+        "y": 2000.8108,
+        "z": 1.0312507
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1120.6975,
+        "y": 2413.2634,
+        "z": 179.04697
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_201",
+      "team": 3,
+      "trigger": {
+        "x": -384.34482,
+        "y": 330.62607,
+        "z": -1.0336426
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -439.01465,
+        "y": -56.52197,
+        "z": 51.575806
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_202",
+      "team": 2,
+      "trigger": {
+        "x": 687.5685,
+        "y": 2368.4487,
+        "z": 13.985786
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1261.9264,
+        "y": 2055.0293,
+        "z": 52.84221
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_203",
+      "team": 2,
+      "trigger": {
+        "x": -443.57202,
+        "y": 149.41486,
+        "z": -1.279621
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -412.64325,
+        "y": 1083.1626,
+        "z": -18.377497
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_204",
+      "team": 2,
+      "trigger": {
+        "x": -1495.016,
+        "y": 2188.1238,
+        "z": -0.3769045
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -850.0605,
+        "y": 2333.795,
+        "z": -2.9049282
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_205",
+      "team": 3,
+      "trigger": {
+        "x": -982.29553,
+        "y": 2195.4172,
+        "z": -49.532494
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1391.6805,
+        "y": 2176.1484,
+        "z": 55.60983
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_206",
+      "team": 3,
+      "trigger": {
+        "x": 163.45001,
+        "y": 1413.1147,
+        "z": -0.35304272
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -256.0269,
+        "y": 1391.6033,
+        "z": 54.03125
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_207",
+      "team": 2,
+      "trigger": {
+        "x": -410.66882,
+        "y": 1492.8478,
+        "z": -125.87448
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -961.8552,
+        "y": 1397.3826,
+        "z": -60.316185
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_208",
+      "team": 3,
+      "trigger": {
+        "x": 1191.2441,
+        "y": 2203.503,
+        "z": 5.346722
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 401.62717,
+        "y": 2145.996,
+        "z": 148.74171
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_209",
+      "team": 2,
+      "trigger": {
+        "x": -345.20685,
+        "y": -666.38354,
+        "z": 89.93019
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -432.70096,
+        "y": 24.448673,
+        "z": 50.8769
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_210",
+      "team": 2,
+      "trigger": {
+        "x": 666.0062,
+        "y": 969.209,
+        "z": -0.07905173
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1265.06,
+        "y": 1173.6519,
+        "z": 52.533447
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_211",
+      "team": 2,
+      "trigger": {
+        "x": 693.7395,
+        "y": 2300.062,
+        "z": -30.11508
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 179.61111,
+        "y": 2215.3464,
+        "z": 52.428013
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_212",
+      "team": 3,
+      "trigger": {
+        "x": -183.33167,
+        "y": 2143.7104,
+        "z": -125.9996
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 621.21906,
+        "y": 2177.4326,
+        "z": -15.00041
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_213",
+      "team": 2,
+      "trigger": {
+        "x": -1768.5044,
+        "y": -777.281,
+        "z": 118.07118
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1916.8467,
+        "y": -442.83203,
+        "z": 138.4524
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_214",
+      "team": 3,
+      "trigger": {
+        "x": -1892.182,
+        "y": 2722.0176,
+        "z": 31.407196
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1945.3921,
+        "y": 1455.9067,
+        "z": 84.876236
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_215",
+      "team": 3,
+      "trigger": {
+        "x": -1569.849,
+        "y": 2336.4978,
+        "z": -2.2471385
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1932.2823,
+        "y": 1846.1433,
+        "z": 68.58445
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_216",
+      "team": 3,
+      "trigger": {
+        "x": -1956.7596,
+        "y": 1105.1829,
+        "z": 33.73945
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1500.8262,
+        "y": 1258.0695,
+        "z": 89.48601
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_217",
+      "team": 3,
+      "trigger": {
+        "x": 1243.3751,
+        "y": 2067.4487,
+        "z": 1.2534868
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1309.867,
+        "y": 1752.563,
+        "z": 50.29458
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_218",
+      "team": 3,
+      "trigger": {
+        "x": -1837.9493,
+        "y": 1003.8964,
+        "z": 39.952473
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1627.1871,
+        "y": 995.6681,
+        "z": 84.72911
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_219",
+      "team": 2,
+      "trigger": {
+        "x": -1627.1871,
+        "y": 995.6681,
+        "z": 32.72911
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1837.9493,
+        "y": 1003.8964,
+        "z": 91.95247
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_220",
+      "team": 2,
+      "trigger": {
+        "x": -1804.2125,
+        "y": 1022.8253,
+        "z": 38.50403
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1955.2678,
+        "y": 1455.6794,
+        "z": 84.92879
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_221",
+      "team": 3,
+      "trigger": {
+        "x": 58.177643,
+        "y": 2197.8389,
+        "z": -126.80672
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -431.65015,
+        "y": 1989.9893,
+        "z": -73.85165
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_222",
+      "team": 3,
+      "trigger": {
+        "x": 1268.2678,
+        "y": 2385.823,
+        "z": 127.03125
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 627.7449,
+        "y": 2099.2856,
+        "z": 89.1125
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_223",
+      "team": 2,
+      "trigger": {
+        "x": -386.7351,
+        "y": 1354.9843,
+        "z": -125.22806
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -327.91327,
+        "y": 571.3112,
+        "z": 50.62506
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_224",
+      "team": 3,
+      "trigger": {
+        "x": -404.31827,
+        "y": 634.5792,
+        "z": -0.75064397
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -405.9762,
+        "y": 1509.6918,
+        "z": -74.00917
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_225",
+      "team": 3,
+      "trigger": {
+        "x": 552.69714,
+        "y": 2440.541,
+        "z": 111.70894
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 275.4461,
+        "y": 1794.9087,
+        "z": 142.22247
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_226",
+      "team": 3,
+      "trigger": {
+        "x": -847.0011,
+        "y": 1419.3813,
+        "z": -112.06705
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -444.9416,
+        "y": 1430.8953,
+        "z": -73.9832
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_227",
+      "team": 2,
+      "trigger": {
+        "x": -397.15405,
+        "y": 1360.846,
+        "z": -125.669235
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -673.7761,
+        "y": 1418.738,
+        "z": -60.374054
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_228",
+      "team": 3,
+      "trigger": {
+        "x": -1565.2339,
+        "y": 1109.9275,
+        "z": 34.886765
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1746.6848,
+        "y": 609.56824,
+        "z": 67.266815
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_229",
+      "team": 2,
+      "trigger": {
+        "x": -1685.8475,
+        "y": 967.1754,
+        "z": 31.69347
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1472.8809,
+        "y": 1100.2944,
+        "z": 86.638565
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_230",
+      "team": 2,
+      "trigger": {
+        "x": -1414.562,
+        "y": 1093.8182,
+        "z": 38.353153
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1153.5369,
+        "y": 1098.7795,
+        "z": 38.5889
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_231",
+      "team": 2,
+      "trigger": {
+        "x": -1018.84674,
+        "y": 1413.417,
+        "z": -112.809006
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -520.70557,
+        "y": 1406.4589,
+        "z": -68.56079
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_232",
+      "team": 3,
+      "trigger": {
+        "x": -379.36627,
+        "y": -477.8839,
+        "z": 4.9384017
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 64.70195,
+        "y": -569.84424,
+        "z": 55.20858
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_233",
+      "team": 3,
+      "trigger": {
+        "x": -840.00806,
+        "y": 2293.7039,
+        "z": -88.54399
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -480.214,
+        "y": 2079.7695,
+        "z": -71.29829
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_234",
+      "team": 3,
+      "trigger": {
+        "x": 56.6212,
+        "y": 355.64474,
+        "z": -0.9721724
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -410.6726,
+        "y": 409.74268,
+        "z": 47.77082
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_235",
+      "team": 2,
+      "trigger": {
+        "x": -684.2766,
+        "y": 2396.721,
+        "z": -99.19636
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1224.4368,
+        "y": 2235.5518,
+        "z": 53.826153
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_236",
+      "team": 2,
+      "trigger": {
+        "x": -423.14252,
+        "y": 1626.2327,
+        "z": -125.918785
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -456.91107,
+        "y": 876.9558,
+        "z": 7.0521164
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_237",
+      "team": 3,
+      "trigger": {
+        "x": 969.92084,
+        "y": 2080.4397,
+        "z": -9.569641
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 492.75488,
+        "y": 2193.687,
+        "z": 166.98534
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_238",
+      "team": 3,
+      "trigger": {
+        "x": -174.75482,
+        "y": 1356.488,
+        "z": -0.033823013
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -867.87244,
+        "y": 1471.3069,
+        "z": -59.74815
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_239",
+      "team": 3,
+      "trigger": {
+        "x": 1342.5331,
+        "y": 1435.4644,
+        "z": -7.0262938
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1420.3262,
+        "y": 2416.745,
+        "z": 82.9427
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_240",
+      "team": 3,
+      "trigger": {
+        "x": -453.99188,
+        "y": 355.51764,
+        "z": -1.7296833
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 105.08147,
+        "y": 355.37903,
+        "z": 51.426025
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_241",
+      "team": 3,
+      "trigger": {
+        "x": -418.61005,
+        "y": -349.71588,
+        "z": 0.57677984
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -414.68008,
+        "y": 780.2672,
+        "z": 23.1665
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_242",
+      "team": 3,
+      "trigger": {
+        "x": 1276.1029,
+        "y": 1170.3656,
+        "z": 0.6748166
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1280.9036,
+        "y": 1918.5693,
+        "z": 54.183556
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_243",
+      "team": 2,
+      "trigger": {
+        "x": -1353.6018,
+        "y": 2176.0623,
+        "z": 2.0957975
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1636.1182,
+        "y": 2510.228,
+        "z": 57.527756
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_244",
+      "team": 3,
+      "trigger": {
+        "x": -1693.6453,
+        "y": 2523.6934,
+        "z": 9.070564
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1424.3865,
+        "y": 2305.7598,
+        "z": 52.83113
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_245",
+      "team": 2,
+      "trigger": {
+        "x": 262.6861,
+        "y": -227.80484,
+        "z": 1.2390041
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 684.6031,
+        "y": 326.88712,
+        "z": 52.824974
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_246",
+      "team": 2,
+      "trigger": {
+        "x": -667.76886,
+        "y": -799.8441,
+        "z": 117.13636
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 208.87192,
+        "y": -514.55664,
+        "z": 53.17279
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_247",
+      "team": 2,
+      "trigger": {
+        "x": -738.5144,
+        "y": -698.8485,
+        "z": 129.03125
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 114.265564,
+        "y": -629.74884,
+        "z": 55.423264
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_248",
+      "team": 2,
+      "trigger": {
+        "x": -415.2623,
+        "y": 1044.5916,
+        "z": -63.083614
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -413.12628,
+        "y": -11.432175,
+        "z": 50.490337
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_249",
+      "team": 2,
+      "trigger": {
+        "x": -229.57501,
+        "y": 482.07462,
+        "z": -1.7034286
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 525.5542,
+        "y": 173.04752,
+        "z": 50.01789
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_250",
+      "team": 2,
+      "trigger": {
+        "x": 453.36902,
+        "y": 338.8199,
+        "z": 3.829806
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -287.26422,
+        "y": 479.6999,
+        "z": 49.197456
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_251",
+      "team": 3,
+      "trigger": {
+        "x": 779.9234,
+        "y": 2615.25,
+        "z": 94.76965
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 323.95178,
+        "y": 1770.6251,
+        "z": 145.0484
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_252",
+      "team": 2,
+      "trigger": {
+        "x": -401.9901,
+        "y": 2179.0164,
+        "z": -125.29502
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -377.49683,
+        "y": 1555.3085,
+        "z": -74.92355
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_253",
+      "team": 3,
+      "trigger": {
+        "x": 379.5298,
+        "y": 48.909126,
+        "z": -2.356903
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 659.1527,
+        "y": 332.65005,
+        "z": 52.942665
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_254",
+      "team": 3,
+      "trigger": {
+        "x": 698.75586,
+        "y": 2291.9023,
+        "z": -26.96875
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 521.9573,
+        "y": 2398.4375,
+        "z": 164.2659
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_255",
+      "team": 2,
+      "trigger": {
+        "x": -1788.363,
+        "y": 1349.1482,
+        "z": 40.377094
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -2013.2749,
+        "y": 1377.7549,
+        "z": 83.581894
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_256",
+      "team": 3,
+      "trigger": {
+        "x": -1759.5972,
+        "y": 472.54968,
+        "z": 18.881824
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1867.0366,
+        "y": -613.84784,
+        "z": 155.32991
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_257",
+      "team": 3,
+      "trigger": {
+        "x": 536.67346,
+        "y": 2212.2715,
+        "z": -118.947426
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -364.99063,
+        "y": 2043.5863,
+        "z": -70.51237
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_258",
+      "team": 2,
+      "trigger": {
+        "x": 481.1908,
+        "y": 2072.002,
+        "z": 114.28125
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1084.7867,
+        "y": 2122.5337,
+        "z": 50.368073
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_259",
+      "team": 3,
+      "trigger": {
+        "x": 620.1057,
+        "y": 2372.3506,
+        "z": 67.03125
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 320.4025,
+        "y": 2001.2988,
+        "z": 165.695
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_260",
+      "team": 2,
+      "trigger": {
+        "x": 123.91801,
+        "y": 376.7671,
+        "z": -0.9563229
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 540.9148,
+        "y": 120.702194,
+        "z": 49.7388
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_261",
+      "team": 3,
+      "trigger": {
+        "x": 773.3412,
+        "y": 2350.5806,
+        "z": -10.056329
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 473.3246,
+        "y": 2218.198,
+        "z": 163.40405
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_262",
+      "team": 2,
+      "trigger": {
+        "x": -946.33325,
+        "y": -799.8689,
+        "z": 116.334724
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1905.2942,
+        "y": -578.8903,
+        "z": 167.23245
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_263",
+      "team": 2,
+      "trigger": {
+        "x": -190.98758,
+        "y": -671.1036,
+        "z": 51.071037
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1338.469,
+        "y": -843.3375,
+        "z": 168.62323
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_264",
+      "team": 3,
+      "trigger": {
+        "x": -1245.5952,
+        "y": -827.29834,
+        "z": 115.99712
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -441.4508,
+        "y": -703.08765,
+        "z": 138.79843
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_265",
+      "team": 2,
+      "trigger": {
+        "x": -1773.0635,
+        "y": 283.64154,
+        "z": -0.6882956
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1623.77,
+        "y": 1108.7574,
+        "z": 85.13956
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_266",
+      "team": 3,
+      "trigger": {
+        "x": -1451.4624,
+        "y": 2662.0452,
+        "z": 61.413216
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1989.298,
+        "y": 1796.732,
+        "z": 84.23192
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_267",
+      "team": 3,
+      "trigger": {
+        "x": -206.32202,
+        "y": 1152.1372,
+        "z": -0.4520198
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -402.41034,
+        "y": 496.7754,
+        "z": 48.6129
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_268",
+      "team": 3,
+      "trigger": {
+        "x": 1168.0574,
+        "y": 889.4768,
+        "z": -0.22464406
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 692.0787,
+        "y": 777.0134,
+        "z": 52.526134
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_269",
+      "team": 2,
+      "trigger": {
+        "x": 535.0995,
+        "y": -24.36405,
+        "z": -4.680574
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 650.02295,
+        "y": 325.58215,
+        "z": 52.630096
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_270",
+      "team": 2,
+      "trigger": {
+        "x": -239.93538,
+        "y": 356.46994,
+        "z": -1.591981
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -431.03265,
+        "y": 1412.454,
+        "z": -54.990803
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_271",
+      "team": 3,
+      "trigger": {
+        "x": -184.42348,
+        "y": 1267.5753,
+        "z": 0.10730243
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 171.48558,
+        "y": 1476.7891,
+        "z": 53.061806
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_272",
+      "team": 3,
+      "trigger": {
+        "x": 123.057304,
+        "y": 274.13312,
+        "z": 2.1456811
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 248.70859,
+        "y": -5.8574724,
+        "z": 55.48249
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_273",
+      "team": 2,
+      "trigger": {
+        "x": 217.67761,
+        "y": 1439.4985,
+        "z": -0.34929705
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 317.55804,
+        "y": 1613.8926,
+        "z": 70.94537
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_274",
+      "team": 2,
+      "trigger": {
+        "x": -10.969841,
+        "y": 1396.0967,
+        "z": -0.26055193
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 271.8568,
+        "y": 1502.0022,
+        "z": 53.452312
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_275",
+      "team": 3,
+      "trigger": {
+        "x": 267.84738,
+        "y": 2077.408,
+        "z": -124.5031
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -581.8673,
+        "y": 2179.461,
+        "z": -43.149864
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_276",
+      "team": 2,
+      "trigger": {
+        "x": -1978.8065,
+        "y": 1094.9517,
+        "z": 34.24211
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1970.3354,
+        "y": 1615.0306,
+        "z": 84.623886
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_277",
+      "team": 2,
+      "trigger": {
+        "x": -1732.5444,
+        "y": 2065.3635,
+        "z": -5.5084867
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1077.2767,
+        "y": 2275.1714,
+        "z": 39.14698
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_278",
+      "team": 2,
+      "trigger": {
+        "x": -568.9303,
+        "y": 2105.0205,
+        "z": -118.66723
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1229.1042,
+        "y": 2261.5369,
+        "z": 56.68625
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_279",
+      "team": 2,
+      "trigger": {
+        "x": 401.63013,
+        "y": 68.47312,
+        "z": -3.0342739
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 57.78244,
+        "y": 436.73804,
+        "z": 51.71892
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_280",
+      "team": 2,
+      "trigger": {
+        "x": -428.9574,
+        "y": 318.02176,
+        "z": -2.4070702
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -16.136253,
+        "y": 330.7304,
+        "z": 51.77849
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_281",
+      "team": 3,
+      "trigger": {
+        "x": -438.90942,
+        "y": -476.9759,
+        "z": 0.56921625
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -417.75262,
+        "y": 565.8974,
+        "z": 50.86512
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_282",
+      "team": 2,
+      "trigger": {
+        "x": -1603.636,
+        "y": 2107.3052,
+        "z": -6.1598845
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1232.7476,
+        "y": 2217.5923,
+        "z": 55.437267
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_283",
+      "team": 2,
+      "trigger": {
+        "x": -1081.4532,
+        "y": -797.4562,
+        "z": 118.3423
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -64.103165,
+        "y": -758.3502,
+        "z": 79.679855
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_284",
+      "team": 3,
+      "trigger": {
+        "x": 134.82301,
+        "y": -819.718,
+        "z": -10.284565
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1017.8852,
+        "y": -795.4513,
+        "z": 170.07292
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_285",
+      "team": 3,
+      "trigger": {
+        "x": -544.067,
+        "y": 1414.1042,
+        "z": -112.50397
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -287.8292,
+        "y": 1238.8455,
+        "z": -10.918728
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_286",
+      "team": 2,
+      "trigger": {
+        "x": 43.987953,
+        "y": 343.60477,
+        "z": -0.8841721
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -334.76575,
+        "y": 706.7122,
+        "z": 44.963577
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_287",
+      "team": 2,
+      "trigger": {
+        "x": -1320.8518,
+        "y": 2672.3638,
+        "z": 130.03125
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -2064.229,
+        "y": 1781.504,
+        "z": 69.2231
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_288",
+      "team": 2,
+      "trigger": {
+        "x": 201.01674,
+        "y": -672.5863,
+        "z": 2.348215
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 660.7858,
+        "y": 327.92358,
+        "z": 52.945717
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_289",
+      "team": 3,
+      "trigger": {
+        "x": -1712.4575,
+        "y": 1175.5205,
+        "z": 31.169075
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1359.2909,
+        "y": 1141.2351,
+        "z": 86.23143
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_290",
+      "team": 2,
+      "trigger": {
+        "x": -623.6858,
+        "y": 2223.7275,
+        "z": -120.439255
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 192.15457,
+        "y": 2139.1167,
+        "z": -25.173347
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_291",
+      "team": 2,
+      "trigger": {
+        "x": -2035.1599,
+        "y": 1899.2296,
+        "z": 0.11882627
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1231.8315,
+        "y": 2257.4893,
+        "z": 55.171867
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_292",
+      "team": 2,
+      "trigger": {
+        "x": -1222.5105,
+        "y": -715.1835,
+        "z": 122.13223
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -100.93739,
+        "y": -860.2672,
+        "z": 80.38875
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_293",
+      "team": 2,
+      "trigger": {
+        "x": -1368.669,
+        "y": -700.9374,
+        "z": 123.30652
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -442.2858,
+        "y": -730.3865,
+        "z": 140.29427
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_294",
+      "team": 3,
+      "trigger": {
+        "x": 729.60706,
+        "y": 542.6344,
+        "z": 0.46603084
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 662.7948,
+        "y": 313.3385,
+        "z": 52.938023
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_295",
+      "team": 2,
+      "trigger": {
+        "x": -735.5845,
+        "y": -749.7535,
+        "z": 121.01967
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1459.241,
+        "y": -814.2011,
+        "z": 168.24937
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_296",
+      "team": 3,
+      "trigger": {
+        "x": 131.857,
+        "y": 2066.978,
+        "z": -123.27194
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -229.62794,
+        "y": 2082.9077,
+        "z": -74.62293
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_297",
+      "team": 3,
+      "trigger": {
+        "x": 51.11928,
+        "y": -530.04297,
+        "z": 1.2341149
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -483.89093,
+        "y": -713.2737,
+        "z": 163.94897
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_298",
+      "team": 3,
+      "trigger": {
+        "x": -1570.979,
+        "y": 2673.2378,
+        "z": 6.6898117
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1274.8922,
+        "y": 2670.804,
+        "z": 182.03125
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_299",
+      "team": 2,
+      "trigger": {
+        "x": 490.27548,
+        "y": 2689.4736,
+        "z": 96.02275
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 1307.3176,
+        "y": 2654.7334,
+        "z": 151.19632
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_300",
+      "team": 3,
+      "trigger": {
+        "x": 1355.4012,
+        "y": 2173.037,
+        "z": -2.2697675
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": 439.28168,
+        "y": 2234.9368,
+        "z": 52.34857
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_301",
+      "team": 3,
+      "trigger": {
+        "x": -443.3653,
+        "y": 2322.7466,
+        "z": -110.34492
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -1247.737,
+        "y": 2258.1824,
+        "z": 56.82032
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_302",
+      "team": 3,
+      "trigger": {
+        "x": -524.76935,
+        "y": 1683.2136,
+        "z": -118.53693
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -540.79144,
+        "y": 2133.7107,
+        "z": -69.46343
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    },
+    {
+      "name": "preaim_303",
+      "team": 2,
+      "trigger": {
+        "x": -540.79144,
+        "y": 2133.7107,
+        "z": -121.46343
+      },
+      "triggerRadius": 160,
+      "triggerHeight": 70,
+      "watch": {
+        "x": -524.76935,
+        "y": 1683.2136,
+        "z": -66.53693
+      },
+      "facingToleranceDeg": 100,
+      "priority": 2,
+      "samples": 2,
+      "recorded": "2026-08-18 04:49:09Z"
+    }
+  ],
+  "plantSites": [
+    {
+      "x": 1126.8682,
+      "y": 2556.0752,
+      "z": 103.94008
+    },
+    {
+      "x": -1621.4636,
+      "y": 2659.6836,
+      "z": 12.548652
+    }
+  ],
+  "plantSiteNames": [
+    "",
+    "B"
+  ],
+  "solvedTPosts": [
+    {
+      "name": "t_post_s0_01",
+      "site": 0,
+      "team": 2,
+      "position": {
+        "x": 1357.2141,
+        "y": 2708.3975,
+        "z": 101.718666
+      },
+      "bearing": 33.475708,
+      "distance": 276.15454,
+      "coverage": 11,
+      "covers": [
+        8,
+        36,
+        55,
+        65,
+        115,
+        125,
+        136,
+        142,
+        148,
+        159,
+        298
+      ],
+      "backWall": 271.88998,
+      "score": 111.10462,
+      "solvedUtc": "2026-08-18 04:50:10Z"
+    },
+    {
+      "name": "t_post_s0_02",
+      "site": 0,
+      "team": 2,
+      "position": {
+        "x": 1402.0991,
+        "y": 1419.485,
+        "z": -8.5313835
+      },
+      "bearing": -76.38757,
+      "distance": 1169.4398,
+      "coverage": 9,
+      "covers": [
+        8,
+        36,
+        115,
+        125,
+        136,
+        142,
+        143,
+        144,
+        159
+      ],
+      "backWall": 300,
+      "score": 94.67776,
+      "solvedUtc": "2026-08-18 04:50:10Z"
+    },
+    {
+      "name": "t_post_s1_01",
+      "site": 1,
+      "team": 2,
+      "position": {
+        "x": -1364.694,
+        "y": 2176.5986,
+        "z": 2.0609674
+      },
+      "bearing": -62.00843,
+      "distance": 547.0848,
+      "coverage": 11,
+      "covers": [
+        9,
+        41,
+        44,
+        87,
+        160,
+        203,
+        234,
+        242,
+        276,
+        281,
+        290
+      ],
+      "backWall": 72.81665,
+      "score": 113.36792,
+      "solvedUtc": "2026-08-18 04:50:11Z"
+    }
+  ],
+  "solvedCtPosts": [
+    {
+      "name": "ct_post_01",
+      "site": -1,
+      "team": 3,
+      "position": {
+        "x": 1395.9849,
+        "y": 2090.5005,
+        "z": -7.8730946
+      },
+      "bearing": 0,
+      "distance": 0,
+      "coverage": 44,
+      "covers": [
+        7,
+        28,
+        35,
+        52,
+        53,
+        79,
+        82,
+        86,
+        88,
+        94,
+        100,
+        106,
+        110,
+        126,
+        131,
+        133,
+        145,
+        157,
+        165,
+        169,
+        170,
+        171,
+        174,
+        177,
+        179,
+        190,
+        191,
+        199,
+        207,
+        211,
+        216,
+        220,
+        221,
+        224,
+        236,
+        238,
+        241,
+        253,
+        256,
+        258,
+        260,
+        274,
+        295,
+        299
+      ],
+      "backWall": -1,
+      "score": 440,
+      "solvedUtc": "2026-08-18 04:50:15Z"
+    },
+    {
+      "name": "ct_post_02",
+      "site": -1,
+      "team": 3,
+      "position": {
+        "x": -416.5595,
+        "y": 550.96857,
+        "z": -2.4827683
+      },
+      "bearing": 0,
+      "distance": 0,
+      "coverage": 40,
+      "covers": [
+        0,
+        3,
+        12,
+        18,
+        37,
+        64,
+        66,
+        70,
+        75,
+        77,
+        78,
+        90,
+        103,
+        108,
+        109,
+        113,
+        120,
+        129,
+        130,
+        135,
+        138,
+        139,
+        161,
+        164,
+        173,
+        185,
+        186,
+        195,
+        196,
+        200,
+        223,
+        231,
+        233,
+        237,
+        239,
+        240,
+        266,
+        270,
+        271,
+        280
+      ],
+      "backWall": -1,
+      "score": 400,
+      "solvedUtc": "2026-08-18 04:50:15Z"
+    },
+    {
+      "name": "ct_post_03",
+      "site": -1,
+      "team": 3,
+      "position": {
+        "x": -262.71027,
+        "y": 2085.8467,
+        "z": -127.24935
+      },
+      "bearing": 0,
+      "distance": 0,
+      "coverage": 39,
+      "covers": [
+        11,
+        18,
+        20,
+        28,
+        32,
+        35,
+        52,
+        53,
+        58,
+        66,
+        82,
+        86,
+        93,
+        102,
+        110,
+        119,
+        126,
+        127,
+        132,
+        133,
+        134,
+        137,
+        157,
+        165,
+        167,
+        169,
+        204,
+        207,
+        211,
+        216,
+        220,
+        232,
+        236,
+        253,
+        256,
+        274,
+        295,
+        300,
+        301
+      ],
+      "backWall": -1,
+      "score": 390,
+      "solvedUtc": "2026-08-18 04:50:15Z"
+    },
+    {
+      "name": "ct_post_04",
+      "site": -1,
+      "team": 3,
+      "position": {
+        "x": -506.61243,
+        "y": 2172.3276,
+        "z": -124.29716
+      },
+      "bearing": 0,
+      "distance": 0,
+      "coverage": 38,
+      "covers": [
+        0,
+        11,
+        18,
+        20,
+        32,
+        52,
+        53,
+        58,
+        66,
+        82,
+        86,
+        93,
+        102,
+        110,
+        119,
+        126,
+        127,
+        132,
+        133,
+        134,
+        137,
+        139,
+        157,
+        165,
+        167,
+        169,
+        185,
+        195,
+        204,
+        211,
+        220,
+        232,
+        236,
+        256,
+        274,
+        295,
+        300,
+        301
+      ],
+      "backWall": -1,
+      "score": 380,
+      "solvedUtc": "2026-08-18 04:50:15Z"
+    },
+    {
+      "name": "ct_post_05",
+      "site": -1,
+      "team": 3,
+      "position": {
+        "x": 67.14566,
+        "y": 2130.5198,
+        "z": -125.06773
+      },
+      "bearing": 0,
+      "distance": 0,
+      "coverage": 38,
+      "covers": [
+        18,
+        20,
+        28,
+        32,
+        35,
+        52,
+        53,
+        58,
+        66,
+        82,
+        86,
+        93,
+        102,
+        110,
+        119,
+        126,
+        127,
+        132,
+        133,
+        134,
+        137,
+        157,
+        165,
+        167,
+        169,
+        204,
+        207,
+        211,
+        216,
+        220,
+        232,
+        236,
+        253,
+        256,
+        260,
+        274,
+        295,
+        299
+      ],
+      "backWall": -1,
+      "score": 380,
+      "solvedUtc": "2026-08-18 04:50:15Z"
+    },
+    {
+      "name": "ct_post_06",
+      "site": -1,
+      "team": 3,
+      "position": {
+        "x": -450.9982,
+        "y": 843.6672,
+        "z": -16.910412
+      },
+      "bearing": 0,
+      "distance": 0,
+      "coverage": 35,
+      "covers": [
+        0,
+        3,
+        12,
+        37,
+        64,
+        70,
+        75,
+        77,
+        78,
+        90,
+        108,
+        109,
+        113,
+        120,
+        129,
+        138,
+        139,
+        161,
+        173,
+        183,
+        185,
+        186,
+        195,
+        196,
+        200,
+        223,
+        231,
+        233,
+        237,
+        239,
+        240,
+        252,
+        266,
+        270,
+        271
+      ],
+      "backWall": -1,
+      "score": 350,
+      "solvedUtc": "2026-08-18 04:50:15Z"
+    },
+    {
+      "name": "ct_post_07",
+      "site": -1,
+      "team": 3,
+      "position": {
+        "x": 605.5001,
+        "y": 2088.313,
+        "z": -91.717705
+      },
+      "bearing": 0,
+      "distance": 0,
+      "coverage": 35,
+      "covers": [
+        18,
+        28,
+        35,
+        52,
+        53,
+        58,
+        82,
+        86,
+        88,
+        110,
+        119,
+        126,
+        132,
+        133,
+        134,
+        137,
+        157,
+        165,
+        169,
+        177,
+        204,
+        207,
+        211,
+        216,
+        220,
+        224,
+        232,
+        236,
+        253,
+        256,
+        258,
+        260,
+        274,
+        295,
+        299
+      ],
+      "backWall": -1,
+      "score": 350,
+      "solvedUtc": "2026-08-18 04:50:15Z"
+    }
+  ],
+  "solvedUtc": "2026-08-18 04:50:15Z"
+}
