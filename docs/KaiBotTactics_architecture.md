@@ -1,162 +1,1405 @@
 # KaiBotTactics
 
-Architecture, algorithms, and design notes.
+An extension to ed0ard's CS2-Bot-Improver that gives Counter-Strike 2 bots a
+learned navigation graph, a tactical memory of the map, and a genuine
+post-plant game — built entirely from what happens during play, with no
+authored data, no engine navigation mesh, and no patching of the game's own
+binaries.
 
-A CounterStrikeSharp plugin that makes CS2 bots play tactically, by learning
-the map from what actually happens in it rather than from hand-authored data.
+Architecture, algorithms, design rationale, and the reasoning behind every
+significant decision.
 
 ---
 
 ## Table of contents
 
-1. [The problem](#1-the-problem)
-2. [The core idea](#2-the-core-idea)
-3. [Architecture at a glance](#3-architecture-at-a-glance)
-4. [The data layer](#4-the-data-layer)
-5. [The learning layer](#5-the-learning-layer)
-6. [The navigation layer](#6-the-navigation-layer)
-7. [The decision layer](#7-the-decision-layer)
-8. [The execution layer](#8-the-execution-layer)
-9. [The human-facing layer](#9-the-human-facing-layer)
-10. [How a round actually runs](#10-how-a-round-actually-runs)
-11. [Algorithm theory](#11-algorithm-theory)
-12. [Recurring design principles](#12-recurring-design-principles)
-13. [Failure modes found in playtesting](#13-failure-modes-found-in-playtesting)
-14. [Known limitations](#14-known-limitations)
-15. [File reference](#15-file-reference)
+1. [What this is, and what it extends](#1-what-this-is-and-what-it-extends)
+2. [The problem in full](#2-the-problem-in-full)
+3. [Mathematical and algorithmic foundations](#3-mathematical-and-algorithmic-foundations)
+4. [The breadcrumb navigation graph](#4-the-breadcrumb-navigation-graph)
+5. [Routes: from graph to named paths](#5-routes-from-graph-to-named-paths)
+6. [Walking a path, and getting unstuck](#6-walking-a-path-and-getting-unstuck)
+7. [Learning the map's duel geometry](#7-learning-the-maps-duel-geometry)
+8. [The post-plant problem](#8-the-post-plant-problem)
+9. [The retake: how the CT side answers](#9-the-retake-how-the-ct-side-answers)
+10. [The handicap: knowledge, not aim](#10-the-handicap-knowledge-not-aim)
+11. [Team decisions: playbook and command](#11-team-decisions-playbook-and-command)
+12. [Execution: the per-tick behaviour chain](#12-execution-the-per-tick-behaviour-chain)
+13. [Weapons, ammunition, and engagement range](#13-weapons-ammunition-and-engagement-range)
+14. [Knowing when to stop learning](#14-knowing-when-to-stop-learning)
+15. [Observability](#15-observability)
+16. [Failure modes found in playtesting](#16-failure-modes-found-in-playtesting)
+17. [Known limitations](#17-known-limitations)
+18. [File reference](#18-file-reference)
+19. [Bibliography and a note on sources](#19-bibliography-and-a-note-on-sources)
 
 ---
 
-## 1. The problem
+## 1. What this is, and what it extends
 
-CS2's built-in bots are not tactically stupid so much as tactically absent.
-They have no notion of a team plan, no memory of where duels happen, no
-concept of holding an angle, and no response to the bomb beyond walking at it.
-Raising the difficulty setting does not fix any of that. It raises reaction
-time and accuracy, so a high-difficulty bot is the same bot with a faster
-trigger — which is a harder opponent in exactly one dimension and a less
-interesting one in every other.
+### ed0ard's CS2-Bot-Improver
 
-The obvious fix is to author tactical data by hand: mark the angles, mark the
-holding positions, mark the routes, per map. That works and it does not scale.
-Every map is a week of work, every map update invalidates it, and community
-maps get nothing.
+The base project addresses a specific and well-identified set of defects in
+CS2's native bot AI by patching the game's own decision points. Its most
+important intervention, for our purposes, concerns post-plant behaviour. The
+stock game contains four separate mechanisms that together cause Counter-
+Terrorist bots to run directly at a planted bomb and attempt a defuse without
+clearing anything:
 
-There is a second obstacle specific to the platform. CounterStrikeSharp
-exposes a `CCSNavArea` wrapper but nothing that returns one, so the engine's
-own navigation mesh is unreachable without signature-scanning the `TheNavMesh`
-global and reverse-engineering the `CNavMesh` layout. There is no published
-signature for it. So the plugin has no map geometry, no nav mesh, and no
-pathfinding — only ray traces and the positions of players.
+- a team gate in `CSGameState::OnBombPlanted` that suppresses the
+  Counter-Terrorist reaction entirely under some conditions,
+- a hearing check on the bomb's beep limited to 1500 units,
+- an `IsVisible` gate inside `MoveToState::OnUpdate` that stops a bot
+  approaching a bomb it cannot see,
+- a disposition rewrite that sets bots to `ENGAGE_AND_INVESTIGATE`.
 
-**What this project aims to solve:** make bots that play like they understand
-the map, on any map, with no authored data, no nav mesh, and no engine
-patching — and make them harder by making them smarter rather than faster.
+CS2-Bot-Improver patches all four. The result is bots that reliably go to the
+bomb, which is a substantial improvement over bots that mill about, and it is
+the foundation everything here is built on.
+
+### What this project adds, and why it does not unpatch anything
+
+Reliably going to the bomb is necessary but not sufficient. A bot that walks
+straight at a bomb, in the open, one at a time, while four Terrorists hold
+angles onto it, is a bot that dies in a predictable order. The stock behaviour
+and the patched behaviour are both, in tactical terms, the same behaviour
+performed with different levels of enthusiasm.
+
+The obvious response is to unpatch the movement so bots approach cautiously.
+That was rejected. It would mean forking CS2-Bot-Improver, reversing four
+carefully-found patches, and redoing that work on every upstream release. It
+also throws away something valuable: the patched pathing genuinely does bring
+bots onto the site, which is a hard problem that has already been solved.
+
+So this project takes the opposite approach. **Let the native AI path them in,
+then take over on arrival.** The plugin does not fight the movement; it adds a
+layer of decision-making on top of it, and intervenes only where the native AI
+has no opinion at all — which angle to hold, where to stand relative to the
+bomb, when to commit to a defuse, who leads, what the team's plan is.
+
+Concretely, the additions are:
+
+| Addition | Purpose |
+|---|---|
+| Breadcrumb navigation graph | A pathfinding graph built from bot movement, because the engine's navigation mesh is unreachable from the plugin API |
+| Route generation and following | Named, distinct, walkable paths between spawns and sites |
+| Spot learning | Duel geometry derived from where players actually die |
+| Position solver | Pre-computed, ranked holding positions per site |
+| Playbook | Team-level plans with deliberate unpredictability |
+| Command layer | Leadership, bomb-carrier reading, synchronised execution |
+| Retake director | A three-phase Counter-Terrorist post-plant plan |
+| Terrorist post-plant hold | Ring formation, sector division, overwatch for late arrivals |
+| Rotation sprint | Run the first half of a post-plant rotation, clear the second |
+| Arsenal | Ammunition awareness, dropped-weapon memory, engagement ranges |
+| Maturity tracking | Knowing when a map has been learned and recording should stop |
+| Communications | Team chat so the plan is visible from inside the game |
+| Handicap | Optional continuous knowledge of the human's position, used for positioning only |
 
 ---
 
-## 2. The core idea
+## 2. The problem in full
 
-Three observations, each of which turns a missing capability into a
-measurement.
+### Difficulty in Counter-Strike bots is one-dimensional
+
+Raising the difficulty setting on a CS2 bot changes its reaction time and its
+aim error. It does not change a single decision the bot makes. A hard bot and
+an easy bot take the same route, hold the same nothing, and respond to a bomb
+plant identically; the hard one simply kills you faster once it sees you.
+
+This produces a specific and unsatisfying experience for a human practising
+against them. Below a certain difficulty the bots are trivial. Above it they
+become effectively aim-hacking, killing you the instant you enter their view
+cone regardless of what either of you did tactically. There is no setting at
+which they are *interesting*, because the axis being adjusted is not the axis
+on which interest lies.
+
+The project's central objective follows directly: **make bots harder by making
+them smarter, and keep their aim mechanics at a human-like level throughout.**
+Every design decision below is subordinate to that. Where a choice existed
+between an intervention that improves decisions and one that improves shooting,
+the shooting was left alone.
+
+### Authored tactical data does not scale
+
+The conventional solution to "bots do not know where to hold" is to author the
+data. Mark the angles, mark the positions, mark the routes, per map, by hand.
+
+This works and it does not scale. Each map is days to weeks of careful work,
+each map update invalidates some of it, community maps get nothing, and the
+quality of the result depends on the author's own understanding of the map. A
+project that requires that work per map is a project that supports four maps.
+
+### The navigation mesh is unreachable
+
+There is a further obstacle specific to the platform. CounterStrikeSharp
+exposes a `CCSNavArea` wrapper type but provides no function that returns one.
+Reaching the engine's own navigation mesh would require signature-scanning for
+the `TheNavMesh` global and reverse-engineering the `CNavMesh` structure
+layout, for which no published signature exists.
+
+So the plugin has: ray traces, player positions, player velocities, weapon
+states, and game events. No geometry, no mesh, no pathfinding, no collision
+queries. Everything else has to be constructed from those primitives.
+
+---
+
+## 3. Mathematical and algorithmic foundations
+
+This section comes early because everything downstream rests on it. The central
+insight of the project is that a navigation graph — the thing the plugin cannot
+obtain from the engine — can be *measured* rather than requested, and once you
+have a graph, a large body of classical algorithm theory becomes immediately
+applicable.
+
+All notation below is written in `snake_case` or in the style of C# and Python
+identifiers. No Greek symbols are used anywhere in this document.
+
+### 3.1 A graph is a set of vertices and a set of edges
+
+The formal object is standard. A graph consists of a vertex set and an edge
+set, where each edge relates a pair of vertices. Cormen, Leiserson, Rivest and
+Stein's *Introduction to Algorithms* develops the representations and
+traversals used here in its graph algorithms part; Skiena's *Algorithm Design
+Manual* is the more practical companion, and is particularly good on the
+question this project actually faced, which is not "which algorithm" but "how
+do I model my problem as a graph in the first place".
+
+For our purposes:
+
+```
+vertex        = a small region of the map a player has stood in
+edge          = an observed transition between two such regions
+edge_weight   = the cost of making that transition
+```
+
+The vertex set is discovered by sampling. The edge set is discovered by
+watching consecutive samples from the same player. Neither requires any
+knowledge of the map's geometry.
+
+### 3.2 Why observed adjacency is stronger than geometric adjacency
+
+A conventional navigation mesh derives connectivity from geometry: two polygons
+are connected if they share an edge and the height difference is traversable.
+This requires the geometry.
+
+The breadcrumb graph derives connectivity from history: two regions are
+connected if something has actually moved between them. This is a *stronger*
+guarantee, not a weaker one. Geometric adjacency can be wrong — a shared edge
+with a clip brush across it, a ledge that looks traversable and is not, a gap
+that requires a jump the pathfinder does not know about. Observed adjacency
+cannot be wrong about traversability, because the traversal is the evidence.
+
+Its weakness is coverage rather than correctness. The graph knows only where
+players have been. This is discussed at length in section 4.
+
+### 3.3 Shortest paths and the A* algorithm
+
+Given a weighted graph, the shortest-path problem is classical. Dijkstra's
+algorithm solves the single-source case and is covered in CLRS. A* is the
+informed variant, introduced by Hart, Nilsson and Raphael in their 1968 paper
+*A Formal Basis for the Heuristic Determination of Minimum Cost Paths*, and
+treated thoroughly in Russell and Norvig's *Artificial Intelligence: A Modern
+Approach* under informed search.
+
+The plugin uses A* with a straight-line heuristic:
+
+```
+f_score(node)   = g_score(node) + heuristic(node, goal)
+
+g_score(node)   = accumulated cost from the start
+heuristic(a, b) = sqrt((a.x - b.x)^2 + (a.y - b.y)^2 + (a.z - b.z)^2)
+```
+
+**Admissibility.** A heuristic is admissible if it never overestimates the true
+remaining cost. Straight-line distance between two points cannot exceed the
+length of any path between them, so this heuristic is admissible, and A* with
+an admissible heuristic is guaranteed to return an optimal path. This is the
+standard result and the reason the heuristic was chosen despite better-informed
+alternatives being conceivable.
+
+**The jump penalty and a deliberate departure.** Edge costs are not pure
+distance:
+
+```
+edge_cost(a, b) = distance(a, b) + (needs_jump ? JUMP_PENALTY : 0)
+JUMP_PENALTY    = 400
+```
+
+Adding a constant to certain edges means the heuristic is no longer strictly
+admissible with respect to true traversal cost, so optimality is no longer
+guaranteed. This is intentional and the trade is worth stating plainly: a route
+that requires every bot to land a jump precisely is a route that will strand
+bots, and a slightly longer route with no jumps in it is operationally better
+than a shorter one that fails intermittently. The penalty biases against jump
+links without forbidding them, so a jump remains available when it is the only
+connection.
+
+### 3.4 Line simplification
+
+A raw A* path through 48-unit cells produces one waypoint every 48 units. A
+corridor of thirty cells becomes thirty waypoints describing a straight line.
+
+The classical solution is polyline simplification, introduced independently by
+Ramer in 1972 and by Douglas and Peucker in 1973, and universally known as the
+Ramer-Douglas-Peucker algorithm. The canonical form recursively discards points
+within a distance tolerance of the chord between the endpoints.
+
+The plugin implements the same idea in the bearing domain rather than the
+distance domain, which is cheaper and better suited to a path that will be
+walked rather than drawn:
+
+```
+simplify(path, angle_tolerance_deg):
+    kept = [path[0]]
+    for i in 1 .. path.length - 2:
+        bearing_in  = bearing(path[i - 1], path[i])
+        bearing_out = bearing(path[i], path[i + 1])
+        if angle_gap(bearing_in, bearing_out) > angle_tolerance_deg:
+            kept.append(path[i])
+    kept.append(path[last])
+    return kept
+```
+
+A point is kept only where the path actually turns. In practice this reduces a
+several-hundred-node path to between eight and thirty waypoints.
+
+### 3.5 Clustering without knowing the number of clusters
+
+The map's duel geometry is derived by clustering the positions where players
+die. The number of genuine duel positions on a map is precisely what is being
+discovered, so any algorithm requiring the cluster count as an input is
+unsuitable. That rules out k-means and its relatives.
+
+The algorithm used is **greedy leader clustering**, described in Hartigan's
+*Clustering Algorithms* (1975) and often called the leader algorithm. It makes
+a single pass, assigning each sample either to the first existing cluster
+within tolerance or to a new cluster of its own:
+
+```
+for sample in samples_ordered_by_time:
+    target = null
+    for cluster in clusters:
+        if cluster.team != sample.team:                                continue
+        if distance_xy(cluster.mean_pos, sample.pos) > XY_RADIUS:      continue
+        if abs(cluster.mean_pos.z - sample.pos.z)   > Z_TOLERANCE:     continue
+        if angle_gap(cluster.mean_yaw, sample.yaw)  > YAW_TOLERANCE:   continue
+        target = cluster
+        break
+    if target == null:
+        target = new_cluster()
+        clusters.append(target)
+    target.add(sample)
+    target.recompute_means()
+```
+
+Three properties made it the right choice:
+
+- **The cluster count is an output.** The map tells you how many positions it
+  has.
+- **The tolerance is physically meaningful.** "Within ninety units and forty
+  degrees" means "the same doorway, held the same way". A k-means cluster count
+  has no such interpretation in map terms.
+- **It is incremental.** New samples extend existing clusters without
+  re-solving from scratch, which matters because the sample bank grows across
+  sessions.
+
+Its known weakness is order dependence: the same samples in a different order
+can produce different clusters. This is mitigated by processing chronologically,
+which is also the order in which the map was genuinely learned.
+
+**Why this replaced fixed-grid binning.** The first implementation snapped each
+sample to a fixed grid cell and grouped identical keys. Fixed cells have
+boundaries and boundaries are arbitrary:
+
+```
+two samples 5 units apart, either side of a boundary   -> never merged
+two samples 95 units apart, inside one cell            -> always merged
+```
+
+Measured on a real 133-sample bank, this discarded 83% of the data. Three
+"separate" pre-aim spots 62 to 115 units apart, all facing within 9 degrees of
+each other, were one position fragmented three ways. Switching to leader
+clustering lifted samples used from 23 to 54 on the same bank.
+
+### 3.6 Circular statistics
+
+Facing directions cannot be averaged arithmetically. Two samples at 179 degrees
+and -179 degrees are two degrees apart, and their arithmetic mean is zero, which
+points in exactly the wrong direction.
+
+The correct treatment is from directional statistics — Mardia and Jupp's
+*Directional Statistics* is the standard reference. Each angle is converted to a
+unit vector, the vectors are summed, and the direction of the resultant is the
+mean:
+
+```
+sum_x    = sum over members of cos(radians(yaw))
+sum_y    = sum over members of sin(radians(yaw))
+mean_yaw = degrees(atan2(sum_y, sum_x))
+```
+
+The resultant's *length* is also useful: it measures concentration, running
+from zero for uniformly scattered angles to one for perfect agreement. The
+plugin derives each learned angle's facing tolerance from it, so a tightly
+agreeing cluster produces a tight tolerance and a loose one produces a forgiving
+one.
+
+### 3.7 Confidence as relative separation, and hysteresis
+
+Several decisions require choosing between competing options where the choice
+must not oscillate. The most important is inferring which bombsite a human
+bomb carrier is heading for.
+
+Confidence is expressed as relative separation:
+
+```
+separation = 1.0 - (nearest_distance / second_nearest_distance)
+```
+
+This is scale-free and bounded between zero and one. Standing exactly midway
+between two sites gives zero. Being twice as close to one as to the other gives
+0.5. A raw distance would be meaningless here because maps differ in size.
+
+The switching rule adds a margin:
+
+```
+if new_choice != current_choice and separation < current_confidence + HYSTERESIS:
+    keep current_choice
+```
+
+This is Schmitt-trigger logic, standard in control and signal processing:
+requiring a challenger to beat the incumbent by a margin rather than merely
+match it. Without it, any measurement near a decision boundary oscillates, and
+in practice that means an entire team changing its mind about which site to
+attack several times a second while a human wanders around near the middle of
+the map.
+
+The same pattern recurs throughout: route choice, target selection, contact
+attribution. Any decision that can flip does flip, unless something stops it.
+
+### 3.8 Sampling without replacement, and why not to optimise win rate
+
+The playbook must choose a team plan each round. The obvious approach is to
+track win rates and prefer the best-performing plays.
+
+This is the multi-armed bandit framing, treated at length in Sutton and Barto's
+*Reinforcement Learning: An Introduction*, and the usual objective is to
+converge on the best arm while exploring enough to be confident it is the best.
+
+**That objective is wrong here, and it is worth being explicit about why.**
+
+A round of Counter-Strike turns on aim, timing, one lucky spray, a mis-thrown
+grenade, and a dozen factors no team plan controls. The outcome signal carries
+far more noise than signal with respect to the play chosen. A selector chasing
+it will converge on whatever happened to win early.
+
+Worse, convergence is itself the failure mode. The opponent is an adaptive
+human who profits from predictability far more than they lose from facing a
+slightly weaker plan. A side that has converged on its best play is a side you
+can read after three rounds and beat for the remaining twenty-seven.
+
+So the selector maximises variety subject to using every play equally, which is
+achieved by sampling without replacement — a shuffled bag:
+
+```
+draw_from_bag(team, options):
+    if bag[team] is empty:
+        bag[team] = shuffle(options.names)
+        if bag[team][0] == last_called[team]:
+            swap(bag[team][0], bag[team][1])
+    name = bag[team].remove_first()
+    return options.find(name)
+```
+
+| Scheme | Immediate repeat possible | Readable after k rounds |
+|---|---|---|
+| uniform random | yes, probability one over n | no, but clumps badly |
+| win-rate greedy | yes, and likely | **yes, quickly** |
+| shuffled bag | only across a bag boundary | no |
+
+The bag gives the strongest guarantee available: every play runs once before any
+play runs twice, and the order within each bag is unpredictable. The swap on
+reshuffle handles the single repeat a bag cannot otherwise avoid, where the last
+play of one bag is the first of the next.
+
+Win and loss records are still kept. They are used for reporting and for the
+maturity criterion — every play must have been tried a minimum number of times
+before a map counts as learned — but never for selection.
+
+### 3.9 Weighted scoring with hard filters
+
+The position solver ranks candidate holding positions. Its score is a weighted
+linear sum, but the two most important criteria are implemented as **filters,
+not terms**:
+
+```
+if not can_see(candidate, bomb):     reject      # hard filter
+if coverage_count < MIN_COVERAGE:    reject      # hard filter
+
+score = coverage_count * COVERAGE_WEIGHT     # 10.0
+      + distance_to_site * DISTANCE_WEIGHT   #  0.004
+      + back_wall_bonus                      #  up to 3.0
+```
+
+The distinction matters. If "can see the bomb" were a heavily weighted score
+term rather than a filter, a position with spectacular angle coverage could
+outrank it and a defender would be placed somewhere it cannot see the thing it
+is defending. Some criteria are not negotiable and should not be priced.
+
+### 3.10 Greedy selection with a diversity constraint
+
+Having scored candidates, the solver must choose several that are spread out
+rather than clustered on the single best piece of ground:
+
+```
+for candidate in sorted_by_score_descending:
+    if chosen.count >= POSTS_PER_SITE:                         break
+    if not far_enough_from(candidate, taken, MIN_SPACING):     continue
+    chosen.append(candidate)
+    taken.append(candidate.position)
+```
+
+This is greedy selection under a dispersion constraint, closely related to
+maximal marginal relevance in information retrieval. It does not produce the
+optimal spread — the general problem of choosing a maximally dispersed subset is
+NP-hard — but it produces a good one in a single pass, which is the correct
+engineering trade for something that runs during freezetime.
+
+---
+
+## 4. The breadcrumb navigation graph
+
+`kai_breadcrumbs.cs`, 1,420 lines.
+
+### The core idea
+
+Every position a bot occupies is walkable. It got there. Recording positions
+therefore produces a set of known-good standing locations for free, requiring
+no geometry and no authoring.
+
+The step that converts a point cloud into a graph is this: **two consecutive
+positions from the same bot constitute a proven traversable link.** Something
+got from one to the other, under its own power, within a fraction of a second.
+
+### Quantisation
+
+Sampling ten bots ten times a second for a match produces roughly a quarter of a
+million records, almost all describing ground already covered. Positions are
+therefore quantised into cells:
+
+```
+cell_x   = floor(x / CELL_SIZE_XY)     # 48 units
+cell_y   = floor(y / CELL_SIZE_XY)     # 48 units
+cell_z   = floor(z / CELL_SIZE_Z)      # 32 units
+cell_key = cell_x + ":" + cell_y + ":" + cell_z
+```
+
+Forty-eight units horizontally is approximately the width of a player, so one
+cell is one standing position. Thirty-two vertically is enough to keep a walkway
+distinct from the floor beneath it, which matters enormously on maps with
+vertical structure.
+
+A node records its cell key, a representative position, a visit count, and a
+flag recording whether it has ever been observed with the occupant grounded.
+
+### The ground flag
+
+A cell observed only mid-jump is somewhere bots pass *through*, not somewhere
+they can stand. Only grounded nodes are offered as candidate positions to the
+solver or as snap targets for pathfinding. Without this distinction, defenders
+get assigned to hold positions in mid-air.
+
+### Edges and the jump flag
+
+```
+on sample for bot b at position p:
+    key = cell_key(p)
+    record_or_update_node(key, p, grounded)
+    if last_key[b] exists and last_key[b] != key:
+        record_or_update_edge(last_key[b], key, needs_jump = was_airborne)
+    last_key[b] = key
+```
+
+The `needs_jump` flag records that a transition required leaving the ground. It
+feeds the A* cost penalty described in section 3.3.
+
+### Nearest-node lookup by cell ring
+
+Answering "what is the nearest recorded standing position to this arbitrary
+point" is the single most frequently asked question of the graph. The distance
+measure weights height heavily:
+
+```
+distance = sqrt(dx * dx + dy * dy + dz * dz * 4.0)
+```
+
+so that a node on the floor above is not selected as the nearest match for one
+below.
+
+The search walks outward in Chebyshev rings from the query point's own cell,
+rather than scanning every node:
+
+```
+for ring in 0 .. max_ring:
+    if first_hit_ring >= 0 and ring > first_hit_ring + 1:
+        break
+    scan_shell(centre_cell, ring)
+```
+
+It continues one ring past the first hit, because a node in the next ring can
+still be nearer in straight-line terms than one at the corner of the current
+ring. The original implementation was a linear scan over the entire dictionary —
+2,541 entries on Mirage — which was affordable only while the function was
+called rarely. It is now called at multiple radii, for multiple candidates,
+whenever a bot fails to snap onto the graph.
+
+### Saturation: knowing when the map has been walked
+
+Recording must stop, or the file grows without limit and the plugin spends
+processing time learning nothing.
+
+```
+quiet_round = new_nodes_this_round <= SATURATION_NEW_NODES
+
+may_latch   = map_is_exempt
+              or node_count >= SATURATION_MIN_NODES       # coverage floor
+              or rounds_recorded >= SATURATION_MAX_ROUNDS # patience limit
+
+saturated   = consecutive_quiet_rounds >= SATURATION_ROUNDS and may_latch
+```
+
+The coverage floor exists because the naive test conflates two very different
+situations: *the map has been fully explored* and *the bots repeated
+themselves*. Three quiet rounds of five bots running the same corridor looks
+identical to a finished map.
+
+Measured across four maps:
+
+| Map | Nodes | Edges | Average degree | Bounding-box fill |
+|---|---|---|---|---|
+| de_mirage | 2,541 | 5,607 | 4.41 | 46.4% |
+| de_dust2 | 1,457 | 2,454 | 3.37 | 26.6% |
+| de_inferno | 1,040 | 1,563 | 3.01 | 17.8% |
+| de_cache | 969 | 1,463 | 3.02 | 14.1% |
+
+Cache latched at 14% coverage while also being the physically largest of the
+four. Under the floor rule it will continue recording until it reaches
+approximately 2,000 nodes, at which point the ordinary quiet-round test resumes
+and the file settles. The round ceiling guarantees termination for a map that
+genuinely has less walkable ground than the floor assumes, and a hard maximum
+node count sits above both.
+
+**Connectivity check.** All four graphs are effectively single connected
+components — Mirage and Dust2 exactly one, Inferno and Cache one plus a single
+isolated node. This was verified explicitly, because a graph in several
+components would produce pathfinding failures that look like bugs but are data
+problems.
+
+---
+
+## 5. Routes: from graph to named paths
+
+`kai_routes.cs`, 1,734 lines. The file contains a route generator that runs once
+and a route follower that runs every tick.
+
+### Generation
+
+```
+for each spawn_region, for each plant_site:
+    for k in 1 .. ROUTES_PER_PAIR:
+        path = a_star(spawn, site, penalising cells used by previous paths)
+        routes.append(simplify(path, ANGLE_TOLERANCE))
+
+patrol routes: loops through contested ground
+rotate routes: site to site
+coverage(route) = number of learned pre-aim angles the route passes
+```
+
+Penalising previously-used cells is a simple k-shortest-paths approximation that
+produces genuinely distinct routes rather than minor variations of one.
+
+| Kind | From | To | Used for |
+|---|---|---|---|
+| Execute | spawn | site | attacks and retakes |
+| Patrol | loop | loop | Counter-Terrorist map control |
+| Rotate | site | site | responding to information |
+
+### Why routes are static and named
+
+A route computed fresh each round would differ each round. That sounds like
+unpredictability and is actually noise: each fresh route is unverified,
+possibly bad, and indistinguishable from the last one in any way a human could
+read or exploit.
+
+Real unpredictability is a fixed set of genuinely distinct routes, each verified
+walkable and verified different from the others, with the choice among them
+made at random. The human cannot know which will be used; each one, when used,
+is good.
+
+Names also do practical work. Route de-duplication, the converge-on-loose-bomb
+special case, and every log line that makes a round readable afterwards all key
+off the route name.
+
+### Snapping onto the graph
+
+Snapping an arbitrary world point to a graph node is the operation that failed
+most often in play. Measured over two sessions, **32 of 38 pathfinding failures
+were the bot's own position failing to snap**, not the destination being
+unreachable.
+
+```
+for radius in [400, 800, 1600]:
+    candidates = nodes within radius, sorted by weighted distance
+    if candidates is empty: continue
+    if eye_position is provided:
+        for candidate in candidates.take(8):     # trace budget
+            if can_see(eye_position, candidate + chest_height):
+                return candidate                 # nearest VISIBLE node
+    return candidates[0]                         # nearest node, unseen
+return null
+```
+
+Two ideas here. The radius escalates rather than giving up, because a start
+point 900 units away is a far better start than no start at all. And candidates
+are filtered by line of sight where a tracer is available, because the nearest
+node is frequently on the other side of the wall the bot is stuck against, and
+a path beginning there begins by walking through masonry.
+
+The eye position is supplied for the *start* of a path and deliberately not for
+the *destination*: a holding position behind cover is supposed to be out of
+sight.
+
+---
+
+## 6. Walking a path, and getting unstuck
+
+### Steering, and why it constrains the entire architecture
+
+The plugin's only movement primitive is:
+
+```
+forward = dot(desired_direction, bot_forward_vector)
+left    = dot(desired_direction, bot_left_vector)
+pawn.m_forwardSpeed = forward * speed
+pawn.m_leftSpeed    = left * speed
+```
+
+This is a shove in a direction. There is no obstacle avoidance, no path
+following, no collision awareness. Reynolds' 1999 *Steering Behaviors for
+Autonomous Characters* and Millington and Funge's *Artificial Intelligence for
+Games* both treat steering as one layer of a stack whose lower layers handle
+collision and whose upper layers handle path planning; here only the middle
+layer exists.
+
+It is perfectly safe over one graph cell, because a straight line between two
+cells a bot has already walked between contains nothing to walk into. It is
+catastrophic over a hundred cells.
+
+**Every movement bug in this project's history traces to something using
+steering as though it were a "go here" command.** The intent structure
+deliberately contains no "go here" field for that reason; anything wanting a bot
+to travel must go through the path follower.
+
+### The path follower
+
+```
+steer(slot, origin, destination):
+    if distance_xy(origin, destination) <= ARRIVE_RADIUS:
+        return false                                    # arrived
+
+    on_graph = is_reachable(origin, SNAP_RADIUS)
+    if on_graph:
+        last_good[slot] = origin                        # remember a proven position
+        end_escape_if_running(slot)
+    else if run_escape(slot, origin):
+        return true                                     # escape owns movement
+
+    leg = leg_for(slot, origin, destination)
+    advance_cursor(leg, origin)
+    check_progress(leg, origin, now)
+    intent.steer_towards = leg.nodes[leg.cursor]
+    return true
+```
+
+### Two-stage stall response
+
+```
+if distance_to_node < best_distance - STALL_IMPROVEMENT:
+    best_distance = distance_to_node
+    best_at = now
+    return
+
+if now - best_at < STALL_SECONDS:
+    return
+
+if not already_resolved:
+    already_resolved = true
+    new_path = solve(origin, destination)   # re-solve from where it ACTUALLY is
+    if new_path is not empty:
+        replace path; return
+
+cursor += 1                                  # skip the unreachable node
+```
+
+The escalation encodes a belief about causes. The most likely reason a bot is
+not progressing is that its path was solved from a position it has since left.
+The second most likely is that the graph is wrong about a particular link.
+Trying the cheap and likely fix first, and the destructive one second, is a
+pattern that recurs throughout the codebase.
+
+### The escape ladder
+
+A bot can end up somewhere the graph has never been. The response is layered
+cheapest-and-most-certain first, and **never hands the bot back to the native
+AI**:
+
+| Stage | Action | Rationale |
+|---|---|---|
+| Retreating | walk back to the last position that snapped onto the graph | guaranteed walkable, because the bot walked out of it; needs no traces and no guessing |
+| Candidates | try the five nearest recorded nodes in turn, three seconds each | the single nearest node to a wedged bot is often on the far side of what wedged it |
+| Unsticking | shove backwards, then left, then right, then backwards with a jump | ordered rather than random: whatever it is wedged against, it arrived from somewhere it fitted |
+
+The shoves are computed relative to the bot's own approach direction:
+
+```
+back_x, back_y = normalise(came_from - origin)
+step 0:  ( back_x,  back_y)         # backwards
+step 1:  (-back_y,  back_x)         # left of approach
+step 2:  ( back_y, -back_x)         # right of approach
+step 3:  ( back_x,  back_y) + jump  # backwards, changing height
+```
+
+Random probing was rejected: it takes many attempts to converge and, on screen,
+reads as a broken bot rather than a stuck one.
+
+The whole ladder is capped in duration. On expiry it stands down and the
+ordinary follower tries again from wherever the bot now is, which is still the
+plugin driving.
+
+---
+
+## 7. Learning the map's duel geometry
+
+`kai_spot_learner.cs`, 964 lines.
 
 ### A death is a measurement
 
-When one player kills another, two facts are established at once. The victim
-was standing at a position that is reachable and worth standing at, and the
-killer was standing within line of sight of it. That is precisely the anchor
-and watch point a "hold this angle" instruction needs, except measured rather
-than guessed.
+When one player kills another, two facts are established simultaneously:
 
-Record enough deaths and the map's duel geometry falls out of the data. No
-authoring required, and it works on any map anybody plays on.
+- the victim was standing somewhere reachable and worth standing at,
+- the killer was standing within line of sight of that place.
 
-### A bot's position is proof of walkability
+That is exactly the anchor-and-watch pair a "hold this angle" instruction needs,
+except measured rather than guessed. Record enough deaths and the map's duel
+geometry falls out of the data.
 
-Every position a bot occupies is walkable, by definition. It got there. So
-recording positions produces a set of known-good standing spots for free.
+### Sampling and engagement identity
 
-The step that turns a point cloud into a navigation mesh is this: two
-*consecutive* positions from the same bot are a proven traversable link.
-Something got from one to the other, under its own power, in a fiftieth of a
-second. Those links are graph edges, and a graph is what pathfinding needs.
+Each death produces one or more sample records carrying position, look
+direction, team, kind, distance to the bomb where relevant, timestamp, and an
+**engagement identifier shared by both participants**.
 
-### Short straight lines between adjacent nodes are safe
+The engagement identifier exists for statistical honesty. One duel contributing
+two samples to the same cluster must not be counted as two independent pieces of
+evidence, or a single frequently-repeated fight inflates a position's apparent
+importance.
 
-The plugin's only movement primitive is a directional shove with no obstacle
-avoidance (see [Steering](#steering-and-why-it-constrains-everything)). That
-is unusable over long distances and perfectly safe over one cell, because a
-straight line between two cells a bot has *already walked between* has nothing
-in it to walk into.
+Samples are filtered before storage. A death in mid-air, or in a position
+failing a ground check, teaches nothing about where to stand.
 
-So the graph does double duty: it provides paths, and it guarantees that each
-leg of a path is short enough and clear enough for the crude steering to
-follow.
+### Emission
+
+Clusters become two kinds of output. Hold spots carry an anchor (cluster mean
+position), a watch point (cluster mean look direction projected forward), a
+crouch flag, and a priority derived from the engagement count. Pre-aim spots
+carry a trigger — where a bot must be standing for the angle to apply — a
+trigger radius and height, a watch point, and a facing tolerance derived from
+the cluster's own angular concentration.
+
+### The position solver
+
+`kai_solver.cs`, 411 lines.
+
+**The inversion.** Every position chooser before the solver began from where a
+bot happened to be standing and searched outward, which makes the answer depend
+on the accident of the bot's position at the moment the bomb landed. A defender
+that spawned on the wrong side of a site received the best position reachable
+from there, not the best position on the site.
+
+The solver inverts this: score every standable position against every known
+angle in advance, keep the best few, and reduce the round-time job to
+assignment.
+
+```
+for candidate in standable_nodes within SITE_RADIUS of site:
+    eye = candidate + eye_height
+    covers = []
+    for angle in pre_aim_spots for this team:
+        if distance_xy(angle.trigger, candidate) > 1600:   continue   # cheap reject
+        if can_see(eye, angle.trigger + chest_height):     covers.append(angle)
+
+    if covers.count < MIN_COVERAGE:                        continue   # hard filter
+    if not can_see(eye, site_centre + bomb_watch_height):  continue   # hard filter
+
+    back_wall = trace_fraction(eye, eye + 300 units away from site) * 300
+    score     = covers.count * 10.0
+              + distance_to_site * 0.004
+              + (back_wall < 120 ? 3.0 * (1 - back_wall / 120) : 0)
+```
+
+The weights encode a clear priority. Coverage dominates because it is the entire
+point of a holding position. Distance is a mild pull *outward*, so that between
+two positions covering the same angles, the one that sees an attacker earlier
+wins. The cover term rewards a wall close behind, capped so that a bot wedged
+into a corner with no view cannot outscore a genuine position.
+
+**Why it runs in-game and incrementally.** Scoring requires line of sight, line
+of sight requires the map loaded, so it cannot be done offline against the JSON
+files. Several hundred candidates against several hundred angles is tens of
+thousands of traces, so it cannot be done in a single tick either. The solver
+holds state between ticks and spends a fixed trace budget per tick until
+complete, and only ever runs during freezetime or warmup.
 
 ---
 
-## 3. Architecture at a glance
+## 8. The post-plant problem
+
+This is the largest single body of work in the project and deserves treating at
+length, because post-plant is where Counter-Strike rounds are actually decided
+and where the native bots are least competent.
+
+### 8.1 What changes when the bomb goes down
+
+The moment a bomb is planted, the game the two sides are playing changes
+completely.
+
+**Before the plant**, the Terrorists must take ground and the Counter-Terrorists
+must deny it. Time pressure is on the Terrorists. Trading kills favours the
+defence, because a defender who trades has done their job.
+
+**After the plant**, everything inverts. The Terrorists no longer need to kill
+anybody; they need only prevent a defuse for forty seconds. The
+Counter-Terrorists must now take ground, under time pressure, against an enemy
+that knows exactly where they must eventually go. The bomb is a fixed point that
+one side must physically stand on, motionless, for five to ten seconds.
+
+Almost every element of good post-plant play follows from that single asymmetry.
+
+### 8.2 The elements of good post-plant defence
+
+These are the things a competent Terrorist side does, each of which had to be
+built:
+
+**Hold a ring, not a huddle.** Defenders spread around the bomb so that
+approaches from every direction are covered, and so that no single grenade or
+spray transfer kills two of them. A huddle is one well-thrown grenade from
+losing the round.
+
+**Every defender must see the bomb.** A defender who cannot see the bomb cannot
+punish a defuse. This is the entire job. A position with a beautiful angle down
+a corridor and no sight of the bomb is not a defensive position, it is a
+bystander.
+
+**Cover the entries, not the compass.** Dividing the circle into even arcs is a
+reasonable default and an inferior answer to covering the specific doorways the
+retake will actually come through. Those doorways are a property of the map and
+of how the map is played.
+
+**Do not overlap.** Two defenders watching the same doorway from different
+positions have wasted one defender, because a third doorway is now unwatched.
+
+**Have a wall behind you.** A defender with open ground behind them can be
+flanked and shot in the back. A defender with a wall behind them can only be
+approached from the front.
+
+**Distance discipline.** A defender too close to the bomb dies to the grenades
+thrown at the bomb. A defender too far away cannot punish the defuse in time.
+There is a band, and it depends on the weapon.
+
+**Late arrivals are a different problem.** A defender who reaches the site
+twenty-five seconds after the plant is arriving into a fight that has already
+started, into a ring that is already broken. Walking into the middle of it is
+the worst available option.
+
+**Speed of rotation matters more than caution on the way.** A defender crossing
+empty map to reach a site under attack is spending the round's most precious
+resource on corners that contain nobody.
+
+### 8.3 The ring: sector division and post claiming
 
 ```
-                       ┌─────────────────────────────┐
-   observation         │  kai_spot_learner           │  deaths  -> duel geometry
-                       │  kai_breadcrumbs            │  walking -> nav graph
-                       └──────────────┬──────────────┘
-                                      │ (offline, per map, written to JSON)
-                       ┌──────────────▼──────────────┐
-   derivation          │  kai_solver                 │  positions -> ranked posts
-                       │  kai_routes (generator)     │  graph     -> named routes
-                       │  kai_maturity               │  when to stop learning
-                       └──────────────┬──────────────┘
-                                      │ (per round)
-                       ┌──────────────▼──────────────┐
-   decision            │  kai_playbook               │  what is the team doing
-                       │  kai_command                │  who leads, when to commit
-                       │  kai_retake_director        │  post-plant CT plan
-                       └──────────────┬──────────────┘
-                                      │ (per tick, per bot)
-                       ┌──────────────▼──────────────┐
-   execution           │  kai_tactics_plugin         │  the behaviour chain
-                       │  kai_routes (follower)      │  walking a path
-                       │  kai_arsenal                │  ammo and weapons
-                       └──────────────┬──────────────┘
-                                      │
-                       ┌──────────────▼──────────────┐
-   output              │  KaiBotIntent -> native hooks│  aim and movement
-                       │  kai_comms                  │  team chat
-                       │  kai_tactics_log            │  the log file
-                       └─────────────────────────────┘
+assign_terrorist_sectors():
+    slots = living terrorists within holding range of the bomb
+    base_bearing = bearing from bomb to the tracked human, if known,
+                   else bearing to the busiest known approach
+    arc_size = 360 / slots.count
+    for i, slot in enumerate(slots):
+        sectors[slot] = base_bearing + (i * arc_size)
 ```
 
-The important structural property is that **the expensive work happens once
-and the per-tick work is reduced to lookup and assignment**. Clustering deaths
-into hold spots, scoring every standable position against every known angle,
-running A* across a whole map to extract routes — all of that is done at map
-load or on command, written to JSON, and read back. What runs sixty-four times
-a second is a chain of cheap tests over pre-computed answers.
+The fan is even; the only free parameter is where it starts. Anchoring it on the
+most likely threat direction puts one defender's arc straight down the line the
+retake is expected from, and the rest spread away from that — so the side covers
+the real threat first and the theoretical ones afterwards.
 
----
+This deliberately does not point everybody at the threat. Five defenders all
+facing one entrance leaves every other entrance open, which against a competent
+retake is worse than facing nothing in particular.
 
-## 4. The data layer
+### 8.4 Post selection: three filters that were added one at a time
 
-### `kai_tactics_data.cs`
+Each of the following was added in response to an observed failure.
 
-The shared vocabulary. Every other file speaks in these types.
+**Filter one: the post must be near the bomb.** The solver works to an
+1,800-unit site radius, which is correct for "positions belonging to this site"
+and far too wide for "positions holding this plant". Measured on Mirage, six of
+sixteen occupied posts were 1,315 to 1,374 units from the bomb — not a ring
+around it, simply bots standing elsewhere while the bomb was defused without
+them. A separate and much tighter cap now applies: a ring is only a ring if
+everybody on it can see the middle.
 
-| Type | What it is |
+**Filter two: the post must watch a known entry.** The threat points are built
+from Counter-Terrorist clearing anchors and Counter-Terrorist-side pre-aim
+triggers near the bomb, de-duplicated at 250 units. This is as close to "the five
+or six doorways the retake comes through" as the recorded data provides. A
+candidate post is traced against each; covering at least one is preferred over a
+better bearing. A defender that can see none of them is decoration.
+
+**Filter three: posts must be spaced.** A minimum separation is enforced between
+claimed posts, so two defenders cannot end up sharing a spray transfer.
+
+Additionally, the watch directions themselves are separated, which is a
+different constraint from separating the positions. Two defenders on opposite
+sides of a site can still both be looking down the same lane.
+
+### 8.5 The wall-facing bug, and verification from the real position
+
+An observed and initially puzzling behaviour: defenders would take a correct
+ring position and then face a wall.
+
+The cause was that the covered-angle set was computed by tracing from the
+**assigned post's coordinates**, while the bot holds from wherever the path
+follower actually stopped it — anywhere within a ninety-unit arrival radius.
+Ninety units is easily enough to put a doorframe between the bot's eye and an
+angle that was cleanly visible from the post. The set was cached and never
+re-checked, so the bot faced that wall for the remainder of the round.
+
+Compounding it: only 3 of 32 defenders in one session reached within 120 units
+of their assigned post, and the median post covers eleven angles, so there was
+ample scope for the selected one to be the blocked one.
+
+Three fixes, layered:
+
+- the covered set is now traced from the bot's actual position,
+- the position at which the set was scored is recorded, and drift beyond a
+  threshold forces a re-score,
+- before the crosshair is committed each tick, the chosen angle is traced from
+  the bot's real eye; if blocked, that angle is struck from the set permanently
+  and the caller falls back to watching the bomb.
+
+The third is self-healing: a set scored slightly wrongly prunes itself within a
+few sweeps.
+
+### 8.6 The rotation sprint
+
+A defender crossing the map after a plant was clearing every corner on the way,
+which is correct pre-plant behaviour and wrong post-plant. The corners contain
+nobody, and the thirty seconds spent on them is the round.
+
+```
+if not post_plant:                    return CAREFUL
+if enemy_visible or under_fire:       return CAREFUL
+if arsenal_says_bot_is_dry:           return CAREFUL   # its weapon state is not ours
+
+journey_start = distance to bomb when this rotation began
+threshold     = max(journey_start * SPRINT_FRACTION, SPRINT_DANGER_RADIUS)
+
+if distance_to_bomb > threshold:      return SPRINT
+return CAREFUL
+```
+
+Sprinting means: knife drawn for the movement speed bonus, walking disabled,
+and the watch target set to a point down the direction of travel rather than at
+any corner.
+
+**Why the split is by fraction rather than a fixed range.** Half the journey
+means half of *this bot's* journey. A bot caught in spawn when the bomb goes
+down and a bot fifty units outside the site have wildly different amounts of
+empty map ahead of them, and any single distance threshold would make one
+careful far too early and the other reckless right up to the defensive ring.
+
+The danger radius is the floor beneath that. However long the journey, the final
+approach into the defence is always walked properly, because that is where
+somebody is genuinely waiting.
+
+**A leak worth recording.** The sprint function only runs for a bot the route
+follower is driving. If a higher-priority behaviour claimed the bot mid-rotation
+— contact support, or a resupply — the function would never run again, the
+weapon would never be restored, and the bot would spend the rest of the round
+holding a knife while believing it had a rifle. A per-tick sweep now ends any
+sprint that has not been confirmed within half a second.
+
+### 8.7 Overwatch: a role for the late arrival
+
+A defender arriving twenty-five seconds after the plant cannot usefully join the
+ring. The ring is what the retake is currently breaking, and a bot arriving
+alone into a broken ring dies without trading.
+
+The alternative is to stop outside and hold a line onto the bomb itself. This is
+worth something the ring is not: whoever defuses must stand still, in the open,
+on a known spot, for five to ten seconds. A rifle looking at that spot from
+outside the fight beats a rifle inside it.
+
+**How far outside is a question about the weapon, not about the map:**
+
+| Class | Holding range |
 |---|---|
-| `KaiPoint` | A world position. `distance_xy` and `distance_sqr` helpers. Height is usually compared separately, because a single 3D radius on Nuke or Vertigo will match the floor above. |
-| `KaiHoldSpot` | A learned position to stand at: `anchor`, `watch`, `crouch`, `site`, `team`, `priority`, `samples`, `bomb_dist`. Used for both T post-plant holds and CT clearing spots. |
-| `KaiPreAimSpot` | A learned angle: `trigger` (where the bot must be), `trigger_radius`, `trigger_height`, `watch` (where to look), `facing_tolerance_deg`, `priority`, `samples`. |
-| `KaiSolvedPost` | A pre-computed holding position with its `coverage` (how many angles it sees), `covers` (which ones), `bearing`, `distance`, `back_wall`, `score`. |
-| `KaiMapTactics` | The per-map file: plant sites, post-plant spots, CT clear spots, pre-aim angles, solved posts. |
-| `KaiBotIntent` | **The single output type of the whole decision system.** See below. |
-| `KaiTacticsLoader` | JSON load/save with automatic backup. |
-| `KaiTime` | UTC stamping. |
+| Negev, M249 | 1800 |
+| Rifles (AK, M4, AUG, SG, Galil, Famas) | 1400 |
+| Sniper rifles, if picked up | 2000 |
+| Submachine guns | 800 |
+| Deagle, Revolver | 900 |
+| Other pistols | 650 |
+| Shotguns | 400 |
 
-#### `KaiBotIntent` is the narrow waist
+These are *holding* distances, not maximum ranges. A rifle can hit at three
+thousand units; it is worth *sitting* at fourteen hundred, far enough to see a
+defuse begin and to be outside the fight on the site, near enough that the shots
+land. A shotgun at fourteen hundred is a spectator. There are no AWPs in this
+game mode, so nothing here assumes one; the sniper rifles are listed only
+because one can be picked up from the ground.
 
-Everything the plugin decides, for one bot on one tick, ends up in one object:
+**Finding the position by tracing ahead.** The first implementation tested only
+the bot's current position: is it within holding range, and can it see the bomb?
+Both conditions rarely coincided. Measured over two sessions: 38 evaluations, 29
+still closing, 8 in range but with no line of sight, and exactly one bot ever
+settled. On real maps the line to the bomb opens later than the range band
+begins, by which point the bot has walked inside the ring and is no longer a
+candidate.
+
+The fix is to look ahead:
+
+```
+find_overwatch_ahead(bot, range):
+    floor = range * (1 - RANGE_TOLERANCE)
+    heading = travel_heading(bot)
+    for step in 0, 200, 400, ... LOOKAHEAD:
+        probe = origin + heading * step
+        probe_to_bomb = distance_xy(probe, bomb)
+        if probe_to_bomb > range:                     continue   # still too far
+        if probe_to_bomb < floor and inside_ring:     break      # past the band
+        if not is_reachable(probe, SNAP_RADIUS):      continue   # inside a wall
+        if not can_see(probe + eye, bomb):            continue   # no line from there
+        if not can_see(origin + eye, probe + eye):    continue   # cannot get there
+        return probe
+    return null
+```
+
+The bot finds the spot where the line opens *before* it walks past it, and stops
+there. Two guards on each probe matter: the probe must be within the breadcrumb
+snap radius, or a point eight hundred units down a heading can land inside a
+wall; and there must be a clear line from the bot's current eye to the probe,
+which rules out probes on the far side of the wall the bot is presently behind.
+
+Once settled, the bot anchors, crouches, and watches the bomb — with **no glance
+sweeping**. The entire value of the position is that it covers the one place a
+defuser must stand still, and a bot that looks away to check a corridor has
+surrendered the only thing it was contributing.
+
+---
+
+## 9. The retake: how the CT side answers
+
+`kai_retake_director.cs`, 3,043 lines.
+
+### Three phases
+
+| Phase | Behaviour |
+|---|---|
+| Clear | one bot is designated defuser and held back; everyone else clears assigned lurk positions |
+| Inspect | the site is swept, with beats assigned so the sweep is partitioned rather than duplicated |
+| Defuse | the defuser commits; the others hold angles covering the bomb |
+
+### Lurk spots and inspection beats
+
+```
+build_lurk_spots():        positions near the bomb where a Terrorist could
+                           plausibly be hiding, from learned hold spots and
+                           solved posts
+assign_inspection_beats(): divide uncleared spots among available bots so the
+                           sweep is partitioned, not duplicated
+sweep_opportunistically(): a bot that happens to walk into sight of an
+                           uncleared spot marks it cleared in passing
+```
+
+The opportunistic sweep is free progress and matters more than it sounds: a
+significant fraction of the site gets cleared by bots simply walking past.
+
+### Defuser discipline
+
+This is the behaviour that must not be interruptible, and it was the subject of
+repeated iteration.
+
+The rule is simple to state: **once a bot has begun a defuse, it does not come
+off it.** Being shot at while defusing is not a reason to stop. The team-mates
+are there to take the fights. A defuse abandoned at two seconds has cost the
+round for nothing, because the two seconds are lost and the bomb is still armed.
+
+Implementation:
+
+```
+if intent.source_name == "defusing:committed":
+    never release the movement pin, under any circumstance
+
+if bomb_is_being_defused():
+    phase = Commit          # checked FIRST in the phase machine, unconditionally
+```
+
+The second rule was added after observing the phase machine, which recomputes
+every tick, transition from Commit back to Bait twice in one session — calling
+off a running defuse to go and bluff again.
+
+### The fake defuse
+
+Tapping the defuse produces the defuse sound and then stopping is a genuine
+technique: it draws a hidden Terrorist out of a corner the sweep could not see
+into.
+
+**One tap.** The bluff has either worked or failed after the first one; a second
+tap tells a lurker nothing the first did not, and simply spends bomb timer. The
+Bait phase originally ran a six-second timer regardless, which is six seconds
+of clock spent on a bluff whose result was already known.
+
+Two subtleties in the implementation:
+
+- the tap counter increments when the hold *starts*, so a naive check flips the
+  phase mid-tap and cuts the sound short; the condition waits for the release,
+- the check must be a **latch**, not a live test, because the fake-defuse driver
+  schedules a repeat hold shortly after each release, which flips a live test
+  back and lets the phase fall into Bait a second time.
+
+### The watchdog
+
+```
+if bomb_planted_for > WATCHDOG_SECONDS and no defuse has started:
+    log at ERROR level
+    drop all Counter-Terrorist overrides for the remainder of the round
+```
+
+This is an explicit admission of failure that hands the side back rather than
+leaving them stuck under a plan that is not working. Its firing rate is among
+the better health metrics for the whole system: it fell from 7 firings across
+19 planted rounds to 2 across 30 after the staging and phase fixes.
+
+### Measured effect of the post-plant work
+
+| Metric | Before | After |
+|---|---|---|
+| Defuses committed | 6 | 33 |
+| Watchdog firings | 7 | 2 |
+| Time from plant to first commit | only ever with about 5s left | 16 to 27 seconds, median 21 |
+
+The single largest contributor was unglamorous. The defuser's staging branch
+wrote a source name and issued no movement command at all, on the assumption
+that native pathing would carry it to the staging position. It did not. Every
+hold-back log line read `stage:ctClear_020:enroute` and the bot never arrived,
+never anchored, never inspected, and was still wandering when the phase timer
+expired.
+
+---
+
+## 10. The handicap: knowledge, not aim
+
+### Why a handicap exists at all
+
+The project's premise is that bots should be made harder by improving their
+decisions. That premise has a ceiling, and the ceiling was reached.
+
+After the work described above, the bots execute, rotate, hold angles, retake,
+trade, and manage their post-plant properly. A competent human still beats them
+comfortably, and the reason is not tactical. It is that a human improvises. A
+human tries something the recorded data has never seen, notices that it worked,
+and does it again. The learned map data has no notion that a position was used
+last round, and the bots have no memory of having died to it, so **a human who
+finds one angle the bots handle badly can farm it indefinitely.**
+
+Raising the difficulty setting would address this by making the bots shoot
+better, which defeats the entire purpose of the project.
+
+### What the handicap does
+
+Three constants at the very top of the plugin class:
+
+```
+BOT_GOD_MODE_VS_HUMAN_TRACKING    = true      the whole handicap
+BOT_GOD_MODE_VS_HUMAN_DELAY       = 30.0f     seconds from round start
+BOT_GOD_MODE_VS_HUMAN_POST_PLANT  = true      keep working after the plant
+```
+
+After thirty seconds of each round, the enemy side is told where the human is,
+continuously. The position is written into the contact list under a reporter
+identifier belonging to no bot, and refreshed every tick so it never ages out.
+
+These are declared `static readonly` rather than `const` specifically so that
+toggling them does not produce unreachable-code warnings in either position —
+a compile-time constant makes one branch of every test provably dead.
+
+### Why thirty seconds
+
+Perfect knowledge from the first tick removes the opening of the round entirely:
+five bots converge on the human's spawn position and every round becomes the
+same fight. The delay leaves the early round genuinely open, so the human still
+wins or loses it on their own play, and the handicap engages only once the round
+has developed into something the bots would otherwise have to read.
+
+### What it deliberately is not
+
+**Line of sight is always required before a bot aims at the tracked position,
+and there is no flag to change that.**
+
+This is the line between a difficulty handicap and a wallhack, and it is drawn
+deliberately. Knowledge and aim are different things:
+
+- Knowing where the human is changes *where the side goes*: which site it
+  defends, who rotates, where it clears first, which angle it holds. All of that
+  reads, on screen, as bots that have worked something out.
+- Aiming through a wall reads as exactly what it is.
+
+There is also an engineering reason. Contact support outranks the route
+follower, the post-plant hold, and the pre-aim layer in the behaviour chain. If
+the tracked contact bypassed line of sight, every bot on the enemy side would
+select it every tick, drop whatever it was doing, and stand motionless with its
+crosshair on masonry for the remainder of the round.
+
+### The version that made the bots worse, and what it taught
+
+The first implementation fed the tracked position into the contact-support
+layer. Comparing behaviour inside and outside the tracked windows, per minute:
+
+| Behaviour | Untracked | Tracked |
+|---|---|---|
+| Contact support | 1.5 | 15.7 |
+| Post-plant hold | 0.4 | 10.7 |
+| Reroute | 0.8 | 2.2 |
+| Team rotation | 0.2 | 0.7 |
+
+The moment they knew where the human was, they **came to them**. Rotations
+tripled, rerouting nearly tripled, contact support went up tenfold.
+
+And the bots got measurably easier to beat. In Counter-Strike, the player
+holding an angle beats the player walking into it, almost regardless of skill.
+Perfect information had converted a defensive problem into a queue of bots
+walking one at a time into a held crosshair.
+
+The correction was to feed the knowledge to **positioning decisions only**:
+
+- **Site attribution**, so the side sets up on the site the human is actually
+  approaching. This was additionally rate-limited to once per second and given a
+  decay, because a per-tick contribution had inflated per-site contact counts to
+  3,908 against a handful from real sightings, converting a pressure measure
+  into a dwell-time measure.
+- **Pre-aim angle selection**, so a bot already holding an angle holds the one
+  covering the human rather than an arbitrary one.
+- **Glance-sweep settling**, so a defender on a post stops cycling twenty angles
+  every four-tenths of a second and settles on the one covering the human. A bot
+  cycling twenty angles is looking at the right one five percent of the time; a
+  bot that has settled is looking at the doorway before the human comes through
+  it.
+- **Sector anchoring**, so the post-plant defensive fan starts on the bearing to
+  the human.
+
+After the correction, per-minute rates inside the tracked windows: rotations at
+0.26 times the untracked rate, rerouting 0.70, route picking 0.10. The bots now
+*stay put* when they know where the human is, which is the correct response and
+the opposite of the first attempt.
+
+**A bug worth recording.** The first version of the pre-aim bias had no team
+check, so it applied to every bot regardless of side — including the human's own
+bot team-mates, who preferentially held the angle covering their own team-mate.
+Five bots watching a friendly and nobody watching the way in. There is now a
+single accessor that returns the tracked position only when the handicap is
+enabled, the position is current, and the asking bot is on the opposing side.
+
+### The result
+
+The bots' aim mechanics are untouched by all of this. Their reaction time, their
+spray control, and their accuracy are whatever the game's difficulty setting
+says they are. What changed is that they are now looking at the right doorway
+when the human comes through it — which is what a good human opponent does, and
+what these bots cannot work out for themselves.
+
+---
+
+## 11. Team decisions: playbook and command
+
+### The playbook
+
+`kai_playbook.cs`, 815 lines. Eleven plays per map, generated to fit whatever
+sites the map turns out to have:
+
+```
+Terrorist:            t_exec_s{n}       fast direct hit
+                      t_split_s{n}      two groups, two approaches
+                      t_default_s{n}    map control first, hit late
+
+Counter-Terrorist:    ct_hold_s{n}      weight one site
+                      ct_hold_spread    even
+                      ct_aggro          contest early
+                      ct_guard_bomb     play the bomb rather than the site
+```
+
+Selection is the shuffled bag described in section 3.8. The playbook also
+watches how a round develops against what the play assumed and calls an audible
+when they diverge: contact on the wrong site, the bomb somewhere unexpected, the
+side down numbers.
+
+### Command
+
+`kai_command.cs`, 425 lines.
+
+**Leaders.** One per side, always a bot, never the human, stable for the whole
+match rather than recomputed each round — a leader that changes every thirty
+seconds is not a leader. The replacement is chosen only when the incumbent is
+gone, by lowest slot, purely so the choice is deterministic and the same bot
+keeps the job. The leader is the anchor the side synchronises to and is never
+sent on decoy duty.
+
+**Reading the carrier.** The site a Terrorist side hits is not chosen in the
+abstract; it is wherever the bomb is going, because a site take without the bomb
+is just a fight. With a bot carrier the play decides. With a **human** carrier
+there is no plan to read, so the site is inferred from movement using the
+relative-separation confidence and hysteresis described in section 3.7. The bots
+then commit to the human's choice rather than executing elsewhere and leaving
+them alone with it.
+
+**Arriving together.** A site take that trickles in is five duels in sequence,
+each of which the defence wins.
+
+```
+Peeling    decoys leave first; the main group may not commit yet
+Staging    main group gathers at STAGING_DISTANCE and waits
+Committed  everybody goes on the same tick
+
+ready  = main group members within STAGING_DISTANCE + TOLERANCE of the site
+enough = ready >= ceil(alive * READY_FRACTION)          # 0.7
+commit = enough or (elapsed >= MAX_STAGING_SECONDS)     # 12.0
+```
+
+The ready fraction is 0.7 rather than 1.0 because waiting for a straggler who is
+dead or stuck means never going at all. The timeout is the same insurance from
+the other direction. The decoys leaving first is deliberate: the noise should
+already be in the wrong place before the real hit begins.
+
+---
+
+## 12. Execution: the per-tick behaviour chain
+
+`kai_tactics_plugin.cs`, 10,771 lines. The main file, and the place where all
+decisions are resolved into a single output object per bot per tick.
+
+### The narrow waist
+
+Everything the plugin decides ends up in one structure:
 
 ```
 watch            KaiPoint?   where to look
@@ -170,785 +1413,67 @@ crouch           bool
 source_name      string      which decision produced this, for the log
 ```
 
-That is the entire interface between "what should this bot do" and "make the
-bot do it". Two native hooks consume it — one for aim, one for movement — and
-nothing else touches the game directly. Every behaviour in the plugin competes
-to write this object, and `source_name` records which one won, which is what
-makes the log readable after the fact.
+Two native hooks consume it — one for aim, one for movement — and nothing else
+touches the game directly. Every behaviour competes to write this object, and
+`source_name` records which one won, which is what makes a session log readable
+afterwards.
 
-### `kai_tactics_log.cs`
+### The chain
 
-A logging layer that exists because of where this code runs: inside native
-hooks and per-tick listeners, where there is no debugger and no useful stack
-trace.
-
-Three levels (`Error`, `Info`, `Verbose`), changeable at runtime with
-`kai_log N` and no rebuild. Every function in the plugin calls
-`KaiLog.Event` at least once. Per-tick paths use `KaiLog.Throttled`, which
-rate-limits by caller-supplied key so a line inside a tick hook does not print
-sixty-four times a second per bot.
-
-Output goes to the console and to a timestamped file under `kai_tactics/logs/`,
-rolled on map change, pruned to the newest twenty. Two details worth noting
-because both were bugs first:
-
-- Flush timing uses `Environment.TickCount64`, not `Server.CurrentTime`. Every
-  `Server` property is a call through to native code that is not ready during
-  plugin load, and the game clock restarts from zero on map change.
-- The throttle table is cleared on map change for the same reason: a stored
-  timestamp from a previous map is in the future relative to the new one, and
-  would suppress its key until the clock caught up.
-
----
-
-## 5. The learning layer
-
-### `kai_spot_learner.cs` — deaths into geometry
-
-**Input:** every player death, with both participants' positions and facings.
-**Output:** `KaiHoldSpot` and `KaiPreAimSpot` lists in the map JSON.
-
-#### Sampling
-
-`OnPlayerDeath` builds one or more `KaiSample` records. Each carries a
-position, a look direction, a team, a kind (`postPlant`, `ctClear`, `preAim`),
-a distance to the bomb where relevant, a timestamp, and an **engagement id**
-shared by both samples from the same duel.
-
-The engagement id matters for honesty in the statistics: one duel that
-contributes two samples to the same cluster must not count as two independent
-pieces of evidence.
-
-Samples are filtered before they are stored — a death in the air, or in a
-position that fails a ground check, teaches nothing about where to stand.
-
-#### Clustering: greedy leader clustering, not grid binning
-
-Version 1 snapped each sample to a fixed grid cell and grouped identical keys.
-Fixed cells have boundaries, and boundaries are arbitrary:
-
-```
-two samples 5 units apart, either side of a cell boundary  -> never merged
-two samples 95 units apart, inside one cell                -> always merged
-```
-
-Measured on a real 133-sample bank this discarded 83% of the data. Three
-separate "pre-aim spots" 62 to 115 units apart, all facing within 9 degrees of
-each other, were one position fragmented three ways.
-
-`build_clusters` replaces it with greedy leader clustering against a running
-centroid:
-
-```
-for each sample in samples_ordered_by_time:
-    target = null
-    for each cluster in clusters:
-        if cluster.team           != sample.team:          continue
-        if distance_xy(cluster.mean_pos, sample.pos) > XY_RADIUS:    continue
-        if abs(cluster.mean_pos.z - sample.pos.z)   > Z_TOLERANCE:   continue
-        if angle_gap(cluster.mean_yaw, yaw_of(sample)) > YAW_TOLERANCE: continue
-        target = cluster
-        break
-    if target == null:
-        target = new_cluster()
-        clusters.add(target)
-    target.members.add(sample)
-
-kept = clusters
-        .where(c => c.count >= MIN_SAMPLES)
-        .order_by_descending(c => c.engagements)
-        .then_by_descending(c => c.count)
-```
-
-No boundaries. A cluster's centre moves as it absorbs members, so a genuine
-position gathers its own evidence regardless of where the coordinate grid
-happens to fall. On the same bank this lifted samples used from 23 to 54.
-
-Three separate tolerances, deliberately:
-
-- **`XY_RADIUS`** — horizontal, generous, because "the same spot" is a couple
-  of steps wide.
-- **`Z_TOLERANCE`** — vertical, tight, and judged independently. This is the
-  single thing that keeps the levels of Vertigo and the floors of Nuke apart.
-- **`YAW_TOLERANCE`** — facing. Two players standing in the same doorway
-  looking opposite ways are holding two different angles, not one.
-
-#### Circular mean for facings
-
-Yaw cannot be averaged arithmetically. Two samples at 179 and -179 degrees are
-2 degrees apart and average to 0, which points the exact wrong way.
-
-```
-sum_x = sum over members of cos(radians(yaw))
-sum_y = sum over members of sin(radians(yaw))
-mean_yaw = degrees(atan2(sum_y, sum_x))
-```
-
-Averaging as unit vectors and taking the resultant's direction is the standard
-fix and it is what `mean_yaw` does.
-
-#### Emission
-
-`emit_holds` turns clusters into `KaiHoldSpot`s (anchor = cluster mean
-position, watch = cluster mean look, priority from engagement count).
-`emit_pre_aim` turns them into `KaiPreAimSpot`s, deriving `trigger_radius` and
-`facing_tolerance_deg` from the spread of the cluster's own members — a tight
-cluster produces a tight trigger, a loose one produces a forgiving one.
-
-### `kai_maturity.cs` — when to stop learning
-
-Every learning system here grows a file. Left alone they grow forever, and
-long before that they stop learning anything, because a map has a finite
-number of angles and a finite number of ways to walk between them.
-
-An earlier version counted completed matches. That was wrong twice: a match
-abandoned after three rounds counts for nothing despite having taught
-something, and a match count measures how long you played rather than what
-came of it.
-
-So maturity is measured against **the evidence itself**, in three stages:
-
-| Stage | Meaning | Criterion |
-|---|---|---|
-| `Seeded` | has something to work with | enough samples to emit any spots at all |
-| `Mapped` | the geometry is known | post-plant and clear sample counts past a ceiling, with a round floor |
-| `Mature` | the plays are known too | every play tried at least `MIN_CALLS` times |
-
-Real recorded reasons from the shipped files:
-
-```
-mapped:  "150 rounds reached the ceiling of 150 with 142/150 post-plant
-          and 236/150 clear samples"
-matured: "198 rounds, all 11 plays tried at least 8 times (96 calls in total)"
-```
-
-Rounds are counted, but only as a **floor**, to stop a quiet start being
-mistaken for a finished map. The thresholds are evidence counts; the round
-count only prevents premature latching.
-
----
-
-## 6. The navigation layer
-
-### `kai_breadcrumbs.cs` — walking into a graph
-
-**Input:** bot positions sampled on a timer.
-**Output:** a quantised node/edge graph, saved as `<map>_graph.json`.
-
-#### Quantisation
-
-Raw sampling at ten a second for ten bots is roughly a quarter of a million
-records per match, nearly all describing ground already covered. So positions
-are quantised into cells:
-
-```
-cell_x    = floor(x / CELL_SIZE_XY)      // 48 units
-cell_y    = floor(y / CELL_SIZE_XY)      // 48 units
-cell_z    = floor(z / CELL_SIZE_Z)       // 32 units
-cell_key  = cell_x + ":" + cell_y + ":" + cell_z
-```
-
-48 units horizontally is about the width of a player. 32 vertically is enough
-to separate a walkway from the floor beneath it. A node records its cell key,
-a representative position, a visit count, and whether it has ever been seen
-with the occupant grounded.
-
-#### Edges
-
-The interesting half:
-
-```
-on each sample for bot b:
-    key = cell_key(position)
-    update_node(key)
-    if last_key[b] != null and last_key[b] != key:
-        update_edge(last_key[b], key, needs_jump = was_airborne_between)
-    last_key[b] = key
-```
-
-An edge means *a bot physically travelled between these two cells*. That is a
-far stronger guarantee than geometric adjacency, and it comes free.
-
-`needs_jump` records that the transition required leaving the ground, so the
-route generator can penalise those links and the follower can press the jump
-button for them.
-
-#### The `ground` flag
-
-A cell only ever observed mid-jump is somewhere bots pass *through*, not
-somewhere they can stand. `standable_nodes()` filters on `ground`, and the
-solver only ever considers those as candidate positions.
-
-#### Nearest-node lookup
-
-`nearest_standable` and `nearest_standable_set` answer "what is the closest
-recorded standing position to this arbitrary point". The distance measure
-weights height:
-
-```
-dist = sqrt(dx*dx + dy*dy + dz*dz*4.0)
-```
-
-so a node on the floor above is not chosen as the nearest match for one below.
-
-The search walks outward in **cell rings** from the query point's own cell
-rather than scanning every node:
-
-```
-for ring in 0 .. max_ring:
-    if found_at_ring >= 0 and ring > found_at_ring + 1: break
-    scan_shell(centre_cell, ring)     // Chebyshev shell, not the solid block
-```
-
-It continues one ring past the first hit, because a node in the next ring out
-can still be nearer in straight-line terms than one at the corner of this one.
-This matters because the original implementation was a linear pass over the
-dictionary — 2,541 entries on Mirage — which was affordable only while it was
-called rarely.
-
-#### Saturation: knowing when the map is walked
-
-Recording stops when the graph stops growing:
-
-```
-if new_nodes_this_round <= SATURATION_NEW_NODES and node_count >= MIN_USABLE_NODES:
-    quiet_rounds += 1
-
-may_latch = map_is_exempt
-            or node_count    >= SATURATION_MIN_NODES     // coverage floor
-            or rounds_recorded >= SATURATION_MAX_ROUNDS   // patience limit
-
-if quiet_rounds >= SATURATION_ROUNDS and may_latch:
-    saturated = true
-```
-
-The coverage floor exists because the original test measured the wrong thing.
-Three quiet rounds of five bots running the same corridor looks exactly like a
-finished map. Measured across four maps:
-
-| Map | Nodes | Edges | Avg degree | Bounding-box fill |
-|---|---|---|---|---|
-| de_mirage | 2,541 | 5,607 | 4.41 | 46.4% |
-| de_dust2 | 1,457 | 2,454 | 3.37 | 26.6% |
-| de_inferno | 1,040 | 1,563 | 3.01 | 17.8% |
-| de_cache | 969 | 1,463 | 3.02 | 14.1% |
-
-Cache latched at 14% coverage. It is also the physically largest of the four.
-The floor prevents that; the round ceiling prevents a map with genuinely less
-walkable ground from recording forever; and `MAX_NODES` remains the hard cap
-above both. Growth is bounded at every level.
-
-### `kai_routes.cs` — graph into named routes
-
-Two halves in one file: a generator that runs once, and a follower that runs
-every tick.
-
-#### `KaiRouteGraph` — A* over breadcrumbs
-
-```
-build(crumbs):
-    for each node in crumbs.graph_nodes():   points[key] = position
-    for each edge in crumbs.graph_edges():
-        cost = distance(points[edge.from], points[edge.to])
-        if edge.needs_jump: cost += JUMP_PENALTY     // 400
-        add_link(edge.from, edge.to, cost)
-
-find_path(from_key, to_key):        // standard A*, euclidean heuristic
-heuristic(a, b) = distance(points[a], points[b])
-```
-
-The jump penalty is a soft preference, not a prohibition: a route round the
-long way is better than a route that requires every bot to hit a jump
-precisely, but a jump is better than no path.
-
-`simplify(path, angle_tolerance_deg)` collapses collinear runs — a corridor of
-thirty cells becomes two waypoints. This is Ramer-Douglas-Peucker in spirit,
-implemented as a bearing-change test, and it is what makes routes small enough
-to store and read.
-
-#### `snap_key` — getting onto the graph
-
-Snapping an arbitrary point to a graph node is the operation that failed most
-often in play. The fixed 400-unit radius meant that on a sparse map, a bot
-standing on unrecorded floor could not be pathed *at all*. Measured: 32 of 38
-pathing failures were the bot's own position failing to snap, not the
-destination being unreachable.
-
-```
-for radius in [400, 800, 1600]:
-    candidates = nodes within radius, sorted by weighted distance
-    if candidates is empty: continue
-    if eye is not null:
-        for candidate in candidates.take(8):        // trace budget
-            if can_see(eye, candidate + chest_height):
-                return candidate                     // nearest VISIBLE
-    return candidates[0]                             // nearest, unseen
-return null
-```
-
-Two ideas. Escalating radius, because a start 900 units away is a far better
-start than no start. And a visibility preference, because the nearest node is
-regularly on the other side of the wall the bot is stuck against, and a path
-starting there begins by walking through masonry.
-
-The eye parameter is passed for the *start* of a path and deliberately not for
-the *destination* — a holding position behind cover is meant to be out of
-sight.
-
-#### Route generation
-
-```
-generate():
-    for each spawn_region, for each plant_site:
-        paths = k distinct A* paths, each penalising the cells used by the last
-        for each path: routes.add(simplify(path))
-    patrol routes:  loops through contested ground
-    rotate routes:  site to site
-    count_coverage(route): how many known pre-aim angles the route passes
-```
-
-Route kinds:
-
-| Kind | From | To | Used for |
-|---|---|---|---|
-| `Execute` | spawn | site | attacks and retakes |
-| `Patrol` | loop | loop | CT map control |
-| `Rotate` | site | site | responding to information |
-
-Routes are **static and named**. A route computed fresh each round would be
-different each round, which sounds like unpredictability but is noise. Real
-unpredictability is a fixed set of genuinely distinct routes chosen from at
-random: each has been verified walkable and verified different, while which
-one gets used is unknowable in advance.
-
-#### `KaiPathFollower` — walking a path
-
-The runtime half. Caches a solved path per bot and steers at the *next node*
-rather than at the destination.
-
-```
-steer(slot, origin, destination):
-    if distance_xy(origin, destination) <= ARRIVE_RADIUS: return false   // arrived
-
-    on_graph = is_reachable(origin, SNAP_RADIUS)
-    if on_graph:
-        last_good[slot] = origin                 // remember a proven position
-        end_escape_if_running(slot)
-    else if run_escape(slot, origin): return true
-
-    leg = leg_for(slot, origin, destination)     // solve or reuse
-    advance_cursor(leg, origin)                  // step past reached nodes
-    check_progress(leg, origin, now)             // stall detection
-    intent.steer_towards = leg.nodes[leg.cursor]
-```
-
-`check_progress` implements a two-stage stall response:
-
-```
-if distance_to_node < best - STALL_IMPROVEMENT:
-    best = distance_to_node; best_at = now; return
-
-if now - best_at < STALL_SECONDS: return
-
-if not resolved:
-    resolved = true
-    new_path = solve(origin, destination)   // re-solve from where it ACTUALLY is
-    if new_path: replace and return
-cursor += 1                                  // skip the node it cannot reach
-```
-
-Solve first, because usually the bot simply was not given the right path.
-Skip second, because a node that cannot be reached twice is one the graph is
-wrong about.
-
-#### The escape ladder
-
-A bot can end up somewhere the graph has never been. The escape is layered
-cheapest-and-most-certain first, and never hands the bot back to the native AI.
-
-| Stage | What it does | Why it is in this order |
-|---|---|---|
-| `Retreating` | walk back to `last_good[slot]` | guaranteed walkable — the bot walked *out* of it. No traces, no guessing. |
-| `Candidates` | try the 5 nearest recorded nodes in turn, 3s each | the single nearest node to a wedged bot is often on the far side of what wedged it |
-| `Unsticking` | shove backwards, then left, then right, then backwards-with-jump, 0.7s each | ordered, not random: whatever it is wedged against, it arrived from somewhere it fitted |
-
-The whole ladder is capped at `ESCAPE_MAX_SECONDS`. On expiry it stands down
-and the ordinary follower tries again — still the plugin driving.
-
-The shoves are computed relative to the bot's own approach direction, not to
-compass directions:
-
-```
-back_x, back_y = normalise(came_from - origin)
-step 0:  ( back_x,  back_y)      // backwards
-step 1:  (-back_y,  back_x)      // left of approach
-step 2:  ( back_y, -back_x)      // right of approach
-step 3:  ( back_x,  back_y) + jump
-```
-
-### `kai_solver.cs` — ranking holding positions
-
-**The inversion.** Every position chooser before this started from where a bot
-happened to be standing and searched outward, which makes the answer depend on
-the accident of where the bot was. The solver inverts it: score *every*
-standable position against *every* known angle ahead of time, keep the best
-few, and reduce the round-time job to assignment.
-
-```
-for each candidate in standable_nodes within SITE_RADIUS of site:
-    eye = candidate + eye_height
-    covers = []
-    for each angle in pre_aim_spots for this team:
-        if distance_xy(angle.trigger, candidate) > 1600: continue   // cheap reject
-        if can_see(eye, angle.trigger + chest_height): covers.add(angle)
-
-    if covers.count < MIN_COVERAGE: continue
-    if not can_see(eye, site_centre + bomb_watch_height): continue   // must see the bomb
-
-    back_wall = trace_fraction(eye, eye + 300 units away from site) * 300
-    score     = covers.count * COVERAGE_WEIGHT          // 10.0
-              + distance_to_site * DISTANCE_WEIGHT      //  0.004
-              + (back_wall < 120 ? COVER_WEIGHT * (1 - back_wall/120) : 0)   // 3.0
-```
-
-The weights encode a clear priority. Coverage dominates because it is the
-entire point. Distance is a mild pull *outward*, so that between two positions
-covering the same angles the one that sees an attacker earlier wins. Cover
-rewards a wall close behind, capped so a bot wedged in a corner with no view
-cannot outscore a real position.
-
-Two hard filters rather than score terms: a post that cannot see the bomb is
-not defending it, and a post that sees nothing is not a post.
-
-Selection is greedy with a spacing constraint:
-
-```
-for candidate in scored.order_by_descending(score):
-    if chosen.count >= POSTS_PER_SITE: break
-    if not far_enough_from(candidate, taken, POST_SPACING): continue
-    chosen.add(candidate); taken.add(candidate.position)
-```
-
-Best first, then anything far enough from what is already taken, so the posts
-are spread rather than clustered on the single best piece of ground.
-
-**Why it runs in-game and incrementally:** scoring needs line of sight, line
-of sight needs the map loaded, so it cannot be done offline against the JSON.
-A few hundred candidates against 257 angles is tens of thousands of traces, so
-it cannot be done in one tick either. The solver holds state between ticks and
-spends a fixed `TRACES_PER_TICK` budget until it finishes, reporting progress.
-It only ever runs during freezetime or warmup.
-
----
-
-## 7. The decision layer
-
-### `kai_playbook.cs` — what is the team trying to do
-
-Before this existed, the answer was hardcoded: Ts always execute a random
-site, CTs always patrol. A team with no plan running the same play every
-round.
-
-Eleven plays per map, generated to fit whatever sites the map turns out to
-have:
-
-```
-T:   t_exec_s{n}      fast direct hit
-     t_split_s{n}     two groups, two approaches
-     t_default_s{n}   map control first, hit late
-CT:  ct_hold_s{n}     weight one site
-     ct_hold_spread   even
-     ct_aggro         contest early
-     ct_guard_bomb    play the bomb rather than the site
-```
-
-#### Selection: a shuffled bag, not a win-rate maximiser
-
-The original implementation scored plays by win rate and called the best. That
-was the wrong objective, and it is worth being explicit about why.
-
-A round in this game turns on aim, timing, one lucky spray, and a dozen things
-no play controls. The outcome carries far more noise than signal. Selection
-that chases it converges on whatever happened to win early — and a side that
-converges is a side you can read after three rounds, which defeats the entire
-purpose of having a playbook.
-
-This is the exploration/exploitation trade-off, and the correct answer here is
-*not* the usual one. In a multi-armed bandit you want to converge on the best
-arm. Here, convergence is itself a failure, because the opponent is an
-adaptive human who profits from predictability more than they lose from
-facing a slightly weaker play.
-
-So selection is sampling without replacement:
-
-```
-draw_from_bag(team, options):
-    if bag[team] is empty:
-        bag[team] = shuffle(options.select(name))
-        if bag[team][0] == last_called[team]:
-            swap(bag[team][0], bag[team][1])    // no back-to-back repeat
-    name = bag[team].remove_first()
-    return options.first(p => p.name == name)
-```
-
-This gives the strongest variety guarantee available: **every play runs once
-before any play runs twice**, and the order within each bag is unpredictable.
-Pure random selection cannot promise the first property; win-rate selection
-actively destroys it.
-
-The swap on reshuffle addresses the one repeat a bag cannot otherwise avoid —
-the last play of one bag being the first of the next — which without the check
-is the most frequent back-to-back pairing in the whole system.
-
-Win/loss records are still kept. They are used for reporting and for the
-maturity criterion (every play tried at least `MIN_CALLS` times), not for
-selection.
-
-#### Audibles
-
-`consider` watches how the round develops against what the play assumed, and
-calls an audible when they diverge — contact on the wrong site, the bomb
-somewhere unexpected, the side down numbers. `record_outcome` writes the
-result to `<map>_plays.json`.
-
-### `kai_command.cs` — leadership and synchronised commitment
-
-#### Leaders
-
-One per side, always a bot, never the human, and stable for the whole match
-rather than recomputed each round — a leader that changes every thirty seconds
-is not a leader.
-
-```
-ensure_leaders():
-    for team in [T, CT]:
-        if is_eligible_leader(current[team], team): continue   // keep the incumbent
-        replacement = lowest valid living bot slot on that team
-        leaders[team] = replacement
-```
-
-Lowest slot, purely so the choice is deterministic and the same bot keeps the
-job across rounds. The leader is the anchor the side synchronises to, and it
-is never sent on decoy duty.
-
-#### Reading the carrier
-
-The site a T side hits is not chosen in the abstract: it is wherever the bomb
-is going, because a site take without the bomb is just a fight.
-
-With a bot carrier, the play picks the site and the carrier is routed there.
-With a **human** carrier there is no plan to read, so the site is inferred
-from movement:
-
-```
-read_carrier_site(carrier, sites, planned_site):
-    nearest, nearest_dist, second_dist = two closest sites to the carrier
-    separation = 1.0 - (nearest_dist / second_dist)      // confidence
-
-    // hysteresis: a new read must beat the standing one by a margin
-    if nearest != current_read and separation < current_confidence + 0.15:
-        return current_read
-
-    current_read = nearest; current_confidence = separation
-    return nearest
-```
-
-`separation` is a confidence measure with a natural interpretation: standing
-midway between two sites gives 0, being twice as close to one as the other
-gives 0.5. Acting on a weak read is worse than acting on none — a human still
-in spawn is equidistant from everything — and the 0.15 hysteresis margin stops
-the whole side thrashing while the human wanders.
-
-#### Arriving together
-
-A site take that trickles in is five duels in sequence, each of which the
-defence wins. So:
-
-```
-Peeling    decoys leave first; the main group may not commit yet
-Staging    main group gathers at STAGING_DISTANCE and waits
-Committed  everybody goes on the same tick
-
-ready  = count of main group within STAGING_DISTANCE + STAGING_TOLERANCE of the site
-enough = ready >= ceil(alive * READY_FRACTION)        // 0.7
-commit = enough or (elapsed >= MAX_STAGING_SECONDS)   // 12.0
-```
-
-`READY_FRACTION` is 0.7 rather than 1.0 because waiting for a straggler who is
-dead or stuck means never going at all. The timeout is the same insurance from
-the other direction.
-
-The decoys leaving first is deliberate: the noise should already be in the
-wrong place before the real hit starts.
-
-### `kai_retake_director.cs` — the post-plant CT problem
-
-The largest single file, and the one with the most awkward relationship to the
-platform.
-
-**The context.** ed0ard's BotAI plugin patches four things that together make
-CT bots beeline to the bomb and defuse without clearing anything: the team
-gate in `CSGameState::OnBombPlanted`, the 1500-unit bomb-beep hearing check,
-the `IsVisible` gate in `MoveToState::OnUpdate`, and the disposition rewrite
-to `ENGAGE_AND_INVESTIGATE`. Unpatching means forking his plugin and redoing
-it every release.
-
-This takes the opposite approach: **let the native AI path them in as it does
-now, then take over on arrival.**
-
-#### Three phases
-
-| Phase | What happens |
-|---|---|
-| `Clear` | one bot is designated defuser and held back. Everyone else clears assigned lurk spots. |
-| `Inspect` | the site is swept — beats are assigned so the sweep is divided rather than duplicated |
-| `Defuse` | the defuser commits; others hold the angles covering the bomb |
-
-#### Lurk spots and inspection beats
-
-```
-build_lurk_spots():   positions near the bomb where a T could plausibly be hiding,
-                      taken from learned hold spots plus solved posts
-assign_inspection_beats():  divide the uncleared spots among available bots so
-                      the sweep is partitioned, not duplicated
-sweep_opportunistically():  a bot that happens to walk into sight of an uncleared
-                      spot marks it cleared in passing — free progress
-```
-
-#### Defuser discipline
-
-The one behaviour that must not be interruptible:
-
-```
-if intent.source_name == "defusing:committed":
-    do not release the pin under any circumstance
-```
-
-Being shot at while defusing is not a reason to stop. Measured across
-sessions: `defusing:committed` was held through contact 11 times and
-`planting:committed` 12 times, with the bot's forward speed forced to zero
-while the bomb ticked down. That is exactly the intended behaviour.
-
-#### Solo retake
-
-A separate state machine for the 1vN case, because a lone defuser has a
-genuinely different problem: `SoloSweep`, `SoloTap`, `SoloWithdraw`,
-`SoloListen`, `SoloDefuse`. The `SoloListen` stage exists because a single
-defender's best information source is sound, and standing still to get it is
-worth the time.
-
-#### Fake defuse
-
-`DriveFakeDefuse` taps the defuse to produce the sound and stops, to draw a
-hidden T out of position. A small thing that reads as genuinely human.
-
-#### Watchdog
-
-```
-if bomb_planted_for > WATCHDOG_SECONDS and no defuse has started:
-    log ERROR, drop all CT overrides for the rest of the round
-```
-
-An explicit admission of failure that hands the side back rather than leaving
-them stuck under a plan that is not working. Its firing rate is one of the
-better health metrics for the whole system.
-
----
-
-## 8. The execution layer
-
-### `kai_tactics_plugin.cs` — the behaviour chain
-
-The main file. 137 methods. Its central structure is a **priority chain**
-evaluated per bot per tick, first match wins:
+Evaluated per bot per tick, first match wins:
 
 ```
 1.  celebration fire        (round over, purely cosmetic)
-2.  resupply                (out of ammo — an empty gun outranks any angle)
+2.  resupply                (out of ammo; an empty gun outranks any angle)
 3.  contact support         (a team mate is in a fight)
 4.  plant / defuse commitment
-5.  T post-plant hold
+5.  Terrorist post-plant hold  (including overwatch for late arrivals)
 6.  loose bomb guard
-7.  route follower
+7.  route follower          (including the rotation sprint)
 8.  pre-aim hold
 9.  glance sweep
 ```
 
-Each layer returns a bool. Returning true writes the `KaiBotIntent` and stops
-the chain, and `intent.source_name` records which layer won.
+**The ordering is load-bearing, and it is where the subtlest bugs live.** A
+layer returning true suppresses everything below it. Two of the three worst bugs
+found in playtesting were layers claiming bots they had no business claiming,
+and in both cases the symptom was not the layer misbehaving but the layers below
+it silently not running.
 
-**The chain's ordering is load-bearing and it is where the subtlest bugs
-live.** A layer that returns true suppresses everything below it. Two of the
-three worst bugs found in playtesting were layers claiming bots they had no
-business claiming, and the symptom in both cases was not the layer misbehaving
-but the *layers below it silently not running*.
+### Aim precedence
 
-#### Aim, and its own precedence
-
-`OnUpdateLookAnglesPre` is the aim hook, with its own separate ordering:
+The aim hook has its own separate ordering:
 
 ```
-1. real contact          -> hand straight back to the native AI (better at duels)
-2. try_threat_aim        -> noise or recent damage
-3. the AI's own SetLookAt
+1. real contact          -> hand straight back to the native AI
+2. threat aim            -> noise, or recent damage
+3. the AI's own look-at
 4. authored angles       (pre-aim, glance, watch targets)
 ```
 
-Handing real duels back to the native AI is a deliberate choice: it is better
-at them than anything here, and the plugin's job is deciding *where to be
-looking before the duel starts*, not winning it.
+**Handing real duels back to the native AI is deliberate.** It is better at them
+than anything here, and this project's job is deciding where a bot should be
+looking *before* the duel starts, not winning the duel. This is also what keeps
+the aim mechanics human-like: no code in this project ever improves a bot's aim
+during a fight.
 
-`try_threat_aim` filters noise by **travel distance rather than straight-line
-distance**, capped at `NOISE_RANGE` (1500 units):
-
-```
-if noise.travel_distance <= NOISE_RANGE and (now - noise.at) <= YIELD_SECONDS:
-    aim at noise.position
-```
-
-Travel distance is the right measure: gunfire through a wall across the map
-should not drag a holding bot off its angle, but footsteps in the next room
-should. Measured latency: median 0.7s, p90 2.0s, max 3.0s.
+Threat aim filters noise by **travel distance rather than straight-line
+distance**, capped at fifteen hundred units. Travel distance is the correct
+measure: gunfire through a wall across the map should not drag a holding bot off
+its angle, but footsteps in the next room should. Measured reaction latency:
+median 0.7 seconds, ninetieth percentile 2.0, maximum 3.0.
 
 Critically, hearing something turns the **head** but does not release the
-movement pin. `should_release_pin` returns true only on `is_enemy_visible`,
-`is_attacking` or `is_aiming_at_enemy`. A noise does not make a holding bot
-wander off, which is the correct trade.
+movement pin. A noise does not make a holding bot wander off, which is the
+correct trade.
 
-#### Steering, and why it constrains everything
-
-The movement hook is the whole reason the architecture looks like it does:
-
-```
-forward = dot(desired_direction, bot_forward_vector)
-left    = dot(desired_direction, bot_left_vector)
-pawn.m_forwardSpeed = forward * speed
-pawn.m_leftSpeed    = left    * speed
-```
-
-That is a shove in a direction. There is no obstacle avoidance, no pathing, no
-collision awareness. It is safe over one graph cell and catastrophic over a
-hundred, and every movement bug in the project's history traces back to
-something using it as though it were a "go here" command.
-
-`KaiBotIntent` has no "go here" field for exactly this reason. Anything that
-wants a bot to travel must go through `KaiPathFollower`.
-
-#### Jump suppression, and the exemption
-
-The native anti-stuck reflex fires when a bot's own state machine notices its
-movement being overridden. Left alone this produced bots hopping on the spot,
-so both the pinned path and the steered path clear the jump button. The
-`intent.jump` flag is the exemption, so a jump the plugin actually *asked* for
-— the escape ladder's last resort — still happens.
-
-#### Transit clearing
+### Transit clearing
 
 What makes a route a push rather than a march:
 
 ```
 apply_transit_clearing(bot):
-    heading = travel_heading(bot)            // from velocity, not from facing
+    heading = travel_heading(bot)              # from velocity, not from facing
     candidates = pre_aim angles within COVERAGE_RANGE
                  and within TRANSIT_ARC_DEG (70) of heading
                  and confirmed by can_see(eye, angle.trigger + chest)
@@ -956,48 +1481,36 @@ apply_transit_clearing(bot):
     intent.watch = candidates.first
 ```
 
-Three filters — range, arc, and a confirming trace — so a bot moving forward
-pre-aims spots it is actually approaching rather than staring at walls.
-Measured: 14% of forward-arc scans find nothing, which is the honest failure
-rate for "there is no known angle ahead of me".
+Three filters — range, arc, and a confirming trace — so a moving bot pre-aims
+spots it is genuinely approaching rather than staring at walls. Roughly fourteen
+percent of forward-arc scans find nothing, which is the honest rate for "there
+is no known angle ahead of me".
 
-There is a hard backstop: if an authored watch point is more than 95 degrees
-off the bot's actual velocity, it is discarded and replaced with a point down
-the direction of travel. Backwards aiming while walking forwards is the single
-most obviously wrong thing a bot can do, and this catches it regardless of
-which layer produced the angle.
+There is a hard backstop: if an authored watch point is more than ninety-five
+degrees away from the bot's actual velocity, it is discarded and replaced with a
+point down the direction of travel. Aiming backwards while walking forwards is
+the single most obviously wrong thing a bot can do, and this catches it
+regardless of which layer produced the angle.
 
-#### CT zones and spacing
+### Zones and spacing
 
 ```
 refresh_ct_zones():   divide the bearing circle around the map centre evenly
-                      among living CTs  (4 CTs -> 90 degrees each, 3 -> 120)
+                      among living Counter-Terrorists
 apply_pre_aim():      hold only if the trigger is in THIS bot's zone
-                      and no anchored team mate is within MIN_BOT_SPACING (200)
+                      and no anchored team mate is within MIN_BOT_SPACING
 ```
 
-Both gates are needed. Without the zone check the whole CT side converges on
-whichever triggers happen to be nearest spawn; without the spacing check two
+Both gates are required. Without the zone check the entire side converges on
+whichever triggers happen to be nearest spawn. Without the spacing check, two
 bots share a spray transfer.
 
-#### Route selection and fitting
+### Route fitting
 
-```
-pick_route(bot, kind):
-    candidates = routes matching kind, team, and destination site
-    free       = candidates not already taken by a team mate
-    pool       = free if free is not empty else candidates
-    chosen     = pool[random]
-    return fit_route_to_bot(bot, chosen)
-```
-
-De-duplication by name is what keeps a CT patrol from becoming a conga line —
-the candidate pool visibly shrinks 12, 11, 10, 9 as each bot takes one.
-
-`fit_route_to_bot` solves a subtler problem. A route is a fixed path between
-fixed endpoints; the bot being given it is wherever it happens to be standing.
-Measured: the median distance from a bot to waypoint zero of its newly
-assigned route was **1,462 units**, maximum 4,522.
+A route is a fixed path between fixed endpoints; the bot receiving it is
+wherever it happens to be standing. Measured: the median distance from a bot to
+waypoint zero of its newly assigned route was **1,462 units**, with a maximum of
+4,522.
 
 ```
 fit_route_to_bot(bot, route):
@@ -1005,489 +1518,247 @@ fit_route_to_bot(bot, route):
     gap  = distance from bot to route.waypoints[join]
     if gap > ROUTE_APPROACH_DISTANCE:
         approach = solve_path(bot_position, route.waypoints[join])
-        waypoints = approach + route.waypoints[join..]
+        waypoints = approach + route.waypoints[join:]
     else:
-        waypoints = route.waypoints[join..]
-    return copy_of(route) with waypoints        // same Name, own list
+        waypoints = route.waypoints[join:]
+    return copy_of(route) with waypoints        # same name, own list
 ```
 
-The copy is essential: the stall check splices waypoints into whatever route a
-bot is running, and handing out the shared instance would edit the route book
-in memory for every bot that ever takes that route.
+The copy is essential. The stall check splices waypoints into whatever route a
+bot is running, and handing out the shared instance would edit the route book in
+memory for every bot that ever takes that route.
 
-### `kai_arsenal.cs` — ammo and weapons
+---
 
-**The problem:** bots keep pulling the trigger on empty guns with loaded
-rifles on the floor beside them. The native AI has no concept of resupplying
-mid-round.
+## 13. Weapons, ammunition, and engagement range
 
-Three responses, in the order a person would choose them:
+`kai_arsenal.cs`, 657 lines.
+
+**The problem:** bots pull the trigger on empty guns while loaded rifles lie on
+the floor beside them. The native AI has no concept of resupplying mid-round.
 
 ```
-is_dry(bot):  (magazine + reserve) <= DRY_THRESHOLD    // 5, not 0
-              and no other loaded weapon in the inventory
+is_dry(bot) = (magazine + reserve) <= DRY_THRESHOLD      # 5, not 0
+              and no other loaded weapon in inventory
 
-dry and safe:      go and pick something up
-dry and in a fight: knife rush, if the enemy is within KNIFE_RUSH_RANGE
+dry and safe:             go and pick something up
+dry and in a close fight: knife rush
 dry and far from a fight: break contact, go for a gun
 ```
 
-`DRY_THRESHOLD` is 5 rather than 0 because a bot with three bullets left is
+The threshold is five rather than zero because a bot with three bullets left is
 about to have a problem and should solve it before it becomes one. The check
 correctly treats a full pistol as not-dry even with an empty rifle.
 
-#### Shared weapon memory
+**Shared weapon memory.** A weapon seen by anybody is remembered by everybody
+for the round. "There is a rifle on the ground at Mid Doors" is a real callout
+and it remains true after the bot that saw it has moved on or died. One bot
+claims each weapon; the claim is released on death or on giving up; the weapon
+is re-verified before travelling to it.
 
-A weapon seen by anybody is remembered by everybody, for the round:
+**Knife rush range.** The original implementation had no distance ceiling: any
+visible enemy triggered a charge. Of 111 measured charges the median covered 481
+units, but twenty exceeded 800 and the longest was 1,516 — a bot sprinting most
+of the length of the map at somebody holding a rifle. The ceiling is now 600
+units, roughly two seconds of running, which is about as long as anybody
+survives crossing open ground toward a loaded weapon. Beyond it the bot restores
+its weapon and goes for a gun instead.
 
-```
-scan():                 note dropped weapons in view
-first_to_see(weapon):   whoever saw it first gets the credit
-claim(weapon, slot):    one bot per weapon
-still_there(weapon):    re-verify before travelling
-release(slot):          on death, or on giving up
-```
-
-"There is an AK on the ground at Mid Doors" is a real callout and it stays
-true after the bot that saw it has moved on or died. The memory lasts the
-round, which is exactly as long as the weapon does.
-
-#### Knife rush
-
-```
-if enemy_distance <= KNIFE_RUSH_RANGE:      // 600
-    draw knife, intent.erratic = true, close the distance
-else:
-    restore weapon, break off, go for a gun
-```
-
-The `erratic` flag strafes and jumps, which meaningfully helps at 200 units
-and does nothing at 1500. The range cap exists because the original had none:
-of 111 measured charges the median was 481 units but 20 exceeded 800 and the
-longest was 1,516 — a bot sprinting most of the length of the map at somebody
-with a rifle.
-
-`is_on_the_objective` refuses to leave a plant or defuse for a weapon, whatever
-the ammo situation.
+**Holding ranges** are described in section 8.7 and are used by the overwatch
+role.
 
 ---
 
-## 9. The human-facing layer
+## 14. Knowing when to stop learning
 
-### `kai_comms.cs` — the squad talks
+`kai_maturity.cs`, 538 lines.
 
-Everything the plugin decides was visible only in a log file read afterwards.
-That is fine for finding bugs and useless while playing: from inside the game,
-a coordinated execute and five bots wandering look identical until somebody
-dies.
+Every learning system in this project writes a file, and every one of them
+eventually stops learning anything, because a map has a finite number of angles
+and a finite number of ways to walk between them.
 
-#### Sticky identities
+An earlier version counted completed matches. That was wrong twice over: a match
+abandoned after three rounds counts for nothing despite having taught something,
+and a match count measures how long you played rather than what came of it.
 
-Bot names are assigned by the game and change between rounds, which makes them
-useless as identities — "Bot Zane" means nothing on round two. So four fixed
-names are handed out, sticky by slot, held for as long as the bot lives. The
-prefix follows the human's side: Counter-Terrorist makes them Operators,
-Terrorist makes them Comrades.
+Maturity is therefore measured against **the evidence itself**:
 
-#### Callouts from geometry
+| Stage | Meaning | Criterion |
+|---|---|---|
+| Seeded | has something to work with | enough samples to emit any spots at all |
+| Mapped | the geometry is known | post-plant and clearing sample counts past a ceiling, with a round-count floor |
+| Mature | the plays are known too | every play tried at least a minimum number of times |
+
+Real recorded reasons from shipped files:
 
 ```
-nearest(position):   the closest known callout anchor
-describe(position):  "A Site", "Mid Doors", "Long"
-approach_name(from, to): "through apartments"
+mapped:  "150 rounds reached the ceiling of 150 with 142/150 post-plant
+          and 236/150 clear samples"
+matured: "198 rounds, all 11 plays tried at least 8 times (96 calls in total)"
 ```
 
-Built-in anchor tables exist for Inferno, Dust2 and Cache; any other map
-degrades to bearings and distances rather than failing.
+Rounds are counted only as a floor, to prevent a quiet start being mistaken for
+a finished map. The thresholds themselves are evidence counts.
 
-#### Team only, always
+---
 
-Every message goes to one team. This is not etiquette — a call of "taking B
+## 15. Observability
+
+`kai_tactics_log.cs`, 406 lines, and `kai_comms.cs`, 965 lines.
+
+### Logging
+
+This code runs inside native hooks and per-tick listeners, where there is no
+debugger and no useful stack trace. Every function in the project calls the
+logger at least once. Per-tick paths use a throttled variant, rate-limited by
+caller-supplied key, so a line inside a tick hook does not print sixty-four
+times a second per bot.
+
+Three levels, changeable at runtime with no rebuild. Output goes to the console
+and to a timestamped file, rolled on map change and pruned to the newest twenty.
+
+Two details worth recording because both were bugs first:
+
+- Flush timing uses a managed monotonic clock, not the game clock. Every game
+  clock property is a call through to native code that is not ready during
+  plugin load, and the game clock restarts from zero on map change.
+- The throttle table is cleared on map change, because a stored timestamp from a
+  previous map is in the future relative to the new one and would suppress its
+  key until the clock caught up.
+
+### Communications
+
+Everything the plugin decided was previously visible only in a log file read
+afterwards. That is fine for finding bugs and useless while playing: from inside
+the game, a coordinated execute and five bots wandering look identical until
+somebody dies.
+
+Bot names are assigned by the game and change between rounds, so they are
+useless as identities. Four fixed names are handed out, sticky by slot, held for
+as long as the bot lives, with the prefix following the human's side.
+
+Callouts are derived from geometry against per-map anchor tables, degrading to
+bearings and distances on maps without one.
+
+Every message goes to one team only. This is not etiquette: a call of "taking B
 through apartments" broadcast to the server hands the defence the round.
 
-Verbosity is tiered (`Call` for decisions, `Detail` for colour) so the chat can
-be turned down without turning it off.
-
-### Console commands
-
-Roughly twenty, all on `kai_` prefixes:
-
-| Command | Purpose |
-|---|---|
-| `kai_log N` / `kai_logfile` | verbosity, file sink |
-| `kai_learn on/off/build` | recording and rebuilding the tactics file |
-| `kai_crumbs` | breadcrumb status, resume, clear |
-| `kai_routes` | route book status, regenerate |
-| `kai_solve` | run the position solver |
-| `kai_plays` | playbook status and records |
-| `kai_maturity` | learning stage and what is still needed |
-| `kai_retake` / `kai_rotate` / `kai_guard` | tune the respective subsystems |
-| `kai_thold` / `kai_ctclear` / `kai_preaim` | manual spot authoring |
-| `kai_ghost` | debug visualisation |
-
-`RunBuild` refuses to run outside freezetime without `force`, because it
-resets the retake director and clears every intent.
-
 ---
 
-## 10. How a round actually runs
-
-**Map load.** Breadcrumbs and the tactics file load from JSON. Maturity
-reports its stage. The route graph is built lazily on first use. The path
-follower is constructed and handed to the retake director. If the tactics file
-has angles but no solved posts, the solver is queued for the next freezetime.
-
-**Freezetime.** The playbook draws a play for each side from its bag. The
-solver spends its trace budget if it has work. Leaders are confirmed. Routes
-are cleared from the previous round.
-
-**Round start.** Each bot is assigned a route fitted to where it is standing.
-CT zones are divided by bearing. Decoys are assigned if the play calls for
-them. The squad announces the play in team chat.
-
-**Play.** The per-tick chain runs for every bot. Routes are followed with
-transit clearing along the way; stalls are detected and re-pathed. CTs reaching
-their zones anchor onto pre-aim angles and glance-sweep between the angles
-their position covers. Contacts are refreshed from sightings and attributed to
-sites. The playbook watches for a reason to call an audible.
-
-**T execute.** The command layer peels decoys, stages the main group at
-`STAGING_DISTANCE`, and commits everyone on the same tick. The bomb carrier is
-routed to the site — or, if the human is carrying, the site is *read from their
-movement* and the bots commit to their choice.
-
-**Plant.** T bots take assigned ring posts around the bomb, pathed rather than
-shoved, each covering a bearing sector with line of sight to the bomb. The
-retake director takes over the CT side: designate a defuser, assign clearers,
-sweep the lurk spots, then defuse under cover.
-
-**Round end.** The playbook records the outcome. Maturity re-evaluates. The
-breadcrumb graph checks whether it learned anything, and saves if it did.
-
----
-
-## 11. Algorithm theory
-
-Collected here so the mathematics is in one place. All in `snake_case` or
-C#-style names rather than symbols.
-
-### A* on the breadcrumb graph
-
-Standard A* with an admissible Euclidean heuristic:
-
-```
-f_score(node)  = g_score(node) + heuristic(node, goal)
-heuristic(a,b) = sqrt((a.x-b.x)^2 + (a.y-b.y)^2 + (a.z-b.z)^2)
-edge_cost(a,b) = distance(a,b) + (needs_jump ? JUMP_PENALTY : 0)
-```
-
-The heuristic is admissible because straight-line distance never exceeds path
-distance, so A* returns optimal paths. The jump penalty breaks strict
-admissibility relative to true traversal cost, which is deliberate and
-harmless: it biases away from jump links rather than guaranteeing a minimum.
-
-### Greedy leader clustering
-
-Single-pass, order-dependent, O(n·k) for n samples and k clusters. Chosen over
-k-means for three reasons:
-
-- **k is not known.** The number of genuine duel positions on a map is exactly
-  what is being discovered.
-- **The radius is physically meaningful.** "Within 90 units" is "the same
-  doorway"; a k-means cluster count is not interpretable in map terms.
-- **It is incremental.** New samples extend clusters without re-solving.
-
-Order dependence is real and mitigated by processing samples chronologically,
-which is also the order in which the map was actually learned.
-
-### Circular statistics for facings
-
-```
-mean_yaw = degrees(atan2(sum(sin(radians(yaw_i))), sum(cos(radians(yaw_i)))))
-```
-
-The resultant vector's length also measures concentration, which is what
-`facing_tolerance_deg` is derived from: a tightly agreeing cluster produces a
-tight tolerance.
-
-### Confidence as relative separation
-
-```
-separation = 1.0 - (nearest_distance / second_nearest_distance)
-```
-
-Scale-free and bounded in `[0, 1)`. Equidistant gives 0; twice as close gives
-0.5. Compared against a standing read plus a hysteresis margin:
-
-```
-if new_read != current_read and separation < current_confidence + HYSTERESIS:
-    keep current_read
-```
-
-This is Schmitt-trigger logic. Without it, any measurement near a decision
-boundary oscillates.
-
-### Sampling without replacement
-
-For n plays, a bag guarantees each appears exactly once per n draws.
-Compared with the alternatives:
-
-| Scheme | Repeat possible next round | Predictable after k rounds |
-|---|---|---|
-| uniform random | yes, with probability 1/n | no, but clumps badly |
-| win-rate greedy | yes, and likely | **yes, quickly** |
-| shuffled bag | only across a bag boundary | no |
-
-The bag maximises entropy subject to the constraint that every play is used
-equally, which is the right objective when the opponent adapts and the
-outcome signal is mostly noise.
-
-### Weighted linear scoring with hard filters
-
-The solver's score is a weighted sum, but the two most important criteria are
-**filters rather than terms**:
-
-```
-if not can_see(candidate, bomb):        reject      // hard
-if covers.count < MIN_COVERAGE:         reject      // hard
-score = covers.count * 10.0 + distance * 0.004 + cover_bonus   // soft
-```
-
-Putting "can see the bomb" in the score with a large weight would let a
-position with spectacular coverage outrank it. Some criteria are not
-negotiable and should not be priced.
-
-### Greedy selection with a diversity constraint
-
-```
-for candidate in sorted_by_score_descending:
-    if far_enough_from(candidate, already_taken, MIN_SPACING):
-        take(candidate)
-```
-
-This is greedy maximal-marginal-relevance. It does not produce the optimal
-spread — that is NP-hard — but it produces a good one in one pass, and the
-spacing constraint is what stops five bots stacking on the single best piece
-of ground.
-
-### Saturation as a stopping rule
-
-```
-quiet_round     = new_nodes_this_round <= SATURATION_NEW_NODES
-may_latch       = exempt or node_count >= FLOOR or rounds >= MAX_ROUNDS
-saturated       = consecutive_quiet_rounds >= SATURATION_ROUNDS and may_latch
-```
-
-The naive form (quiet rounds alone) conflates *the map is fully explored* with
-*the bots repeated themselves*. The coverage floor discriminates between them,
-and the round ceiling guarantees termination for maps that genuinely have less
-ground than the floor assumes.
-
-### Two-stage stall response
-
-```
-stalled = (distance_to_target has not improved by IMPROVEMENT within SECONDS)
-
-first stall  -> re-solve the path from the CURRENT position
-second stall -> skip the target
-```
-
-The escalation encodes a belief about causes. The most likely reason a bot is
-not progressing is that its path was solved from somewhere it no longer is.
-The second most likely is that the graph is wrong about a link. Trying the
-cheap, likely fix first and the destructive one second is the general shape,
-and it recurs in the escape ladder too.
-
----
-
-## 12. Recurring design principles
-
-**Measure, do not author.** Every piece of tactical knowledge comes from
-something that happened. This is the whole project.
-
-**Expensive once, cheap forever.** Clustering, solving, route extraction — all
-done at load or on command and cached to disk.
-
-**Filters before scores.** Non-negotiable criteria are rejections, not
-weighted terms.
-
-**Hysteresis on every switching decision.** Site reads, route choices, target
-selection. Anything that can oscillate does, unless a margin stops it.
-
-**Fail visibly, hand back deliberately.** The defuse watchdog and the escape
-ladder's expiry both log at ERROR and relinquish control explicitly. Silent
-degradation is worse than loud failure.
-
-**Never silently hand back.** Where the plugin *can* keep driving, it does.
-The escape ladder exists so that a stuck bot gets four increasingly aggressive
-attempts before anything gives up.
-
-**Log every function.** Not a style rule — a consequence of running inside
-native hooks with no debugger.
-
-**Suspect the layer above.** When a behaviour is not happening, the cause is
-usually that something higher in the priority chain claimed the bot. Two of the
-three worst bugs were exactly this.
-
----
-
-## 13. Failure modes found in playtesting
+## 16. Failure modes found in playtesting
 
 Worth publishing alongside the design, because each was invisible from inside
 the game and obvious from the log.
 
 ### Bots supporting their own fights
 
-`refresh_contacts` records a contact against the slot that saw the enemy.
-`apply_contact_support` then scanned every contact for one it could see — and
-the bot that saw an enemy trivially satisfies "can see it". **722 of 1,032
-support responses were a bot swinging onto its own fight.**
+The contact refresh records a contact against the slot that saw the enemy. The
+contact-support layer then scanned every contact for one it could see — and the
+bot that saw an enemy trivially satisfies "can see it". **722 of 1,032 support
+responses were a bot swinging onto its own fight.**
 
 The aim override was harmless, since real contact hands straight back to the
 native AI a layer above. The *priority* was not: the function returns true, so
-every bot that saw an enemy dropped its route, its hold and its retake
-assignment and reverted to native wandering.
+every bot that saw an enemy dropped its route, its hold, and its retake
+assignment, and reverted to native wandering.
 
-The fix is one line: `if (contact.reported_by == player.slot) continue;`
+The fix was one line: skip any contact this bot reported itself.
 
 ### Clearers that never moved
 
-`drive_clearer` cleared the anchor, set a source name, logged "en route", and
-returned — having issued no movement command, on the assumption that native
+The clearing driver cleared the anchor, set a source name, logged "en route",
+and returned — having issued no movement command, on the assumption that native
 pathing would carry the bot in. It did not. **Of 23 measured approach runs, 18
 finished further from the assigned spot than they started**, several by more
-than 1,000 units, while the log reported them en route throughout.
+than a thousand units, while the log reported them en route throughout.
 
-This is why inspection ended with most of the site unswept in 17 rounds, and
-why the defuse watchdog fired in 9.
+The identical fault appeared later in the defuser's staging branch, with the
+identical symptom.
 
 ### Bots frozen against walls
 
-Route waypoints were followed by pointing `steer_towards` at them, and steering
-has no obstacle avoidance. **27 mid-round freezes totalling 270 seconds**, the
-worst a slot frozen 48 seconds of a 90-second round with its distance logged
-unchanged at 3,337 units throughout.
+Route waypoints were followed by pointing the steering at them, and steering has
+no obstacle avoidance. **27 mid-round freezes totalling 270 seconds**, the worst
+a bot frozen for 48 seconds of a 90-second round with its distance to the
+waypoint logged unchanged at 3,337 units throughout.
 
-Two contributing causes: `pick_route` never checked whether the bot was near
-the route's start (median 1,462 units, max 4,522), and nothing ever noticed
-that a bot had stopped making progress.
+Two contributing causes: route assignment never checked whether the bot was near
+the route's start, and nothing ever noticed that a bot had stopped making
+progress.
 
 ### Posts that were never reached
 
-T ring posts were assigned by score and reached by shoving. **191 lines of
-"moving to its ring post" against 13 of "holding its ring post"**; of 28
-approach runs only 3 ever got within 120 units.
+Ring posts were assigned by score and reached by shoving. **191 log lines of
+"moving to its ring post" against 13 of "holding its ring post"**; of 28 approach
+runs only 3 ever got within 120 units.
 
 After pathing was added, 18 of 24 runs ended closer — but only 4 reached the
-post. The remaining problem is *assignment*, not movement: `claim_solved_post`
-scores on coverage, distance and back wall, and never on whether the post is
+post. The remaining problem is assignment rather than movement: post selection
+scores on coverage, distance, and cover, and never on whether the post is
 reachable in the time the bomb has left.
 
-### The handicap that made bots worse
+### The handicap that made the bots worse
 
-Adding continuous knowledge of the human's position (see below) initially fed
-that knowledge into `apply_contact_support`. Comparing behaviour inside and
-outside the tracked windows, per minute:
+Described in full in section 10.
 
-| Behaviour | Untracked | Tracked |
-|---|---|---|
-| contact support | 1.5 | 15.7 |
-| T hold | 0.4 | 10.7 |
-| reroute | 0.8 | 2.2 |
-| rotations | 0.2 | 0.7 |
+### The phase machine that called off its own defuse
 
-The bots left their angles and walked toward a known position, arriving strung
-out and one at a time. **In Counter-Strike the player holding an angle beats
-the player walking into it**, so perfect information had converted a defensive
-problem into a queue.
-
-The correction was to feed the knowledge to the *site attribution* and to
-*pre-aim angle selection* instead — deciding which angle bots already holding
-should hold, rather than sending them anywhere. Site attribution was also
-rate-limited and given a decay, because per-tick contribution had inflated
-per-site counts to 3,908 against a handful from real sightings, turning a
-pressure measure into a dwell-time measure.
+Described in section 9. A live test where a latch was required, in a state
+machine that recomputes every tick.
 
 ---
 
-## 14. Known limitations
+## 17. Known limitations
 
 **Post assignment ignores reachability.** The solver scores positions on
-coverage, distance and cover. It does not know how long a bot will take to get
-there, so a post 1,900 units away at plant time is a post that will not be
-occupied before the bomb goes off.
+coverage, distance, and cover. It does not know how long a bot will take to
+reach one, so a post nineteen hundred units away at plant time is a post that
+will not be occupied before the bomb detonates.
 
-**Route join can skip a route's early angles.** `fit_route_to_bot` joins at the
-nearest waypoint, which is geometrically right but means a bot standing near
-the far end of a route takes it without clearing the angles on the early legs.
+**Route joining can skip a route's early angles.** Fitting joins at the nearest
+waypoint, which is geometrically correct but means a bot standing near the far
+end of a route takes it without clearing the angles on the early legs.
 
-**Sparse maps path badly.** The breadcrumb graph only knows where bots have
-walked. On a map at 14% bounding-box fill there is a great deal of floor more
-than the snap radius from anything recorded. The escalating snap and the escape
-ladder mitigate it; more recording fixes it.
+**Sparse maps path badly.** The breadcrumb graph knows only where bots have
+walked. On a map at fourteen percent bounding-box fill there is a great deal of
+floor more than the snap radius from anything recorded. The escalating snap and
+the escape ladder mitigate it; more recording fixes it, which is what the
+coverage floor now enables.
 
-**No peeking.** There is no jiggle peek, shoulder peek, or jump spot anywhere
-in the codebase. Bots hold or they walk. `intent.erratic` is the only movement
-modifier and only `knife_rush` uses it.
+**No peeking.** There is no jiggle peek, shoulder peek, or jump spot anywhere in
+the codebase. Bots hold or they walk.
 
-**Jump edges are recorded but under-used.** `needs_jump` is consumed by the
-route generator as a cost penalty. The follower can now press jump on the
-escape ladder's last step, but does not yet press it for a path link that
-requires one, so a route needing a hop stalls there.
+**Jump edges are recorded but under-used.** The jump flag is consumed by the
+route generator as a cost penalty, and the escape ladder can press jump as its
+last resort, but the path follower does not yet press it for a path link that
+requires one. A route needing a hop stalls there.
 
-**Difficulty is still bounded by the native duel.** Everything here decides
-where bots are and what they are looking at. Once a duel starts, the native AI
-takes over, and its aim is whatever the difficulty setting says.
-
-### The human-tracking handicap
-
-Because of that last limitation, there is an explicit and deliberately visible
-handicap, controlled by three flags at the very top of the plugin class:
-
-```
-BOT_GOD_MODE_VS_HUMAN_TRACKING    = true      the whole handicap
-BOT_GOD_MODE_VS_HUMAN_DELAY       = 30.0f     seconds from round start
-BOT_GOD_MODE_VS_HUMAN_POST_PLANT  = true      keep working after the plant
-```
-
-After the delay, the enemy side is told where the human is, continuously. It
-is written into the contact list with `reported_by = -1` — a slot belonging to
-no bot — and refreshed every tick so it never ages out.
-
-What it is for: countering the same hiding spot round after round. The learned
-data has no notion that a position was used last round, and the bots have no
-memory of dying to it, so a human who finds one angle the bots handle badly can
-farm it indefinitely.
-
-What it deliberately is **not**: line of sight is always required before a bot
-aims at the tracked contact, and there is no flag to change that. Knowledge and
-aim are different handicaps. Knowledge changes where the side sets up; aiming
-through walls is a wallhack and would also wreck the behaviour, since contact
-support outranks the movement layers and every bot on the side would stand
-still with its crosshair on masonry.
-
-The flags are `static readonly` rather than `const` specifically so that
-toggling them does not produce unreachable-code warnings in either position.
+**Difficulty remains bounded by the native duel.** Everything here decides where
+bots are and what they are looking at. Once a duel begins, the native AI takes
+over, and its aim is whatever the difficulty setting says. That is by design,
+and the handicap in section 10 is the deliberate answer to it.
 
 ---
 
-## 15. File reference
+## 18. File reference
 
 | File | Lines | Role |
 |---|---|---|
-| `kai_tactics_plugin.cs` | ~9,700 | Main plugin. Hooks, per-tick behaviour chain, console commands, route following, pre-aim, contacts, zones. |
-| `kai_retake_director.cs` | ~2,930 | Post-plant CT plan: clear, inspect, defuse. Solo retake state machine. Fake defuse. |
-| `kai_routes.cs` | ~1,730 | Route graph (A*), route generation, route book I/O, and `KaiPathFollower` with the escape ladder. |
-| `kai_breadcrumbs.cs` | ~1,420 | Navigation graph recorded from bot movement. Quantisation, edges, saturation, nearest-node search. |
-| `kai_comms.cs` | ~965 | Team chat. Sticky squad identities, callout tables, verbosity tiers. |
-| `kai_spot_learner.cs` | ~964 | Deaths into hold spots and pre-aim angles. Sample bank, clustering, emission. |
-| `kai_playbook.cs` | ~815 | Play definitions, bag-based selection, audibles, win/loss records. |
-| `kai_tactics_data.cs` | ~565 | Shared types. `KaiPoint`, `KaiHoldSpot`, `KaiPreAimSpot`, `KaiSolvedPost`, `KaiBotIntent`, JSON loader. |
-| `kai_arsenal.cs` | ~548 | Dry detection, shared dropped-weapon memory, knife rush, resupply. |
-| `kai_maturity.cs` | ~538 | Learning stages and stopping criteria, per map. |
-| `kai_command.cs` | ~425 | Leaders, reading the bomb carrier, synchronised execute phases. |
-| `kai_solver.cs` | ~411 | Incremental scoring of every standable position against every known angle. |
-| `kai_tactics_log.cs` | ~406 | Levelled, throttled, file-backed logging. |
+| `kai_tactics_plugin.cs` | 10,771 | Main plugin: hooks, per-tick behaviour chain, console commands, route following, pre-aim, contacts, zones, post-plant hold, overwatch, rotation sprint, handicap |
+| `kai_retake_director.cs` | 3,043 | Post-plant Counter-Terrorist plan: clear, inspect, defuse. Solo retake state machine. Fake defuse. Watchdog. |
+| `kai_routes.cs` | 1,734 | Route graph and A*, route generation, route book I/O, path follower and escape ladder |
+| `kai_breadcrumbs.cs` | 1,420 | Navigation graph recorded from bot movement: quantisation, edges, saturation, ring search |
+| `kai_comms.cs` | 965 | Team chat: sticky squad identities, callout tables, verbosity tiers |
+| `kai_spot_learner.cs` | 964 | Deaths into hold spots and pre-aim angles: sample bank, clustering, emission |
+| `kai_playbook.cs` | 815 | Play definitions, bag-based selection, audibles, win and loss records |
+| `kai_arsenal.cs` | 657 | Dry detection, shared dropped-weapon memory, knife rush, resupply, holding ranges |
+| `kai_tactics_data.cs` | 565 | Shared types and JSON loader |
+| `kai_maturity.cs` | 538 | Learning stages and stopping criteria, per map |
+| `kai_command.cs` | 425 | Leaders, bomb-carrier reading, synchronised execute phases |
+| `kai_solver.cs` | 411 | Incremental scoring of every standable position against every known angle |
+| `kai_tactics_log.cs` | 406 | Levelled, throttled, file-backed logging |
+
+Total: approximately 22,700 lines.
 
 ### On-disk artefacts, per map
 
@@ -1501,4 +1772,97 @@ toggling them does not produce unreachable-code warnings in either position.
 logs/<map>_<stamp>.log
 ```
 
-Every write goes through `KaiTacticsLoader`, which takes a backup first.
+Every write goes through a loader that takes a backup first.
+
+---
+
+## 19. Bibliography and a note on sources
+
+### A correction worth making before publication
+
+The standard algorithms textbook usually referred to as "Introduction to
+Algorithms" is by **Cormen, Leiserson, Rivest and Stein** — universally
+abbreviated CLRS after the authors' initials. It is not by anyone named Clemons,
+and it is worth getting right in a published document, because CLRS is a
+well-known enough abbreviation that the wrong name would be noticed immediately.
+The 3rd edition (2009) is the one most often cited; a 4th edition appeared in
+2022.
+
+Everything else below is confirmed and safe to cite as written.
+
+### Works genuinely relevant to what was built
+
+**Graph representation, traversal, and shortest paths**
+
+- Cormen, T. H., Leiserson, C. E., Rivest, R. L., and Stein, C. *Introduction to
+  Algorithms*, 3rd edition, MIT Press, 2009. Graph representations, breadth-first
+  and depth-first search, Dijkstra's algorithm, greedy algorithms and the
+  greedy-choice property.
+- Skiena, S. S. *The Algorithm Design Manual*. Particularly valuable on the
+  modelling question — how to recognise that your problem is a graph problem in
+  the first place.
+- Sedgewick, R., and Wayne, K. *Algorithms*, 4th edition, Addison-Wesley.
+  Practical treatment of graph data structures and priority queues.
+- Goodrich, M. T., Tamassia, R., and Goldwasser, M. H. *Data Structures and
+  Algorithms in Python*, Wiley, 2013. The adjacency-map graph representation
+  used here — a dictionary of vertex keys to their incident edges — follows this
+  book's graph ADT directly, which is why the breadcrumb graph stores string
+  cell keys rather than integer indices into an array. Its chapters on priority
+  queues and heaps cover the structure A* needs for its frontier, and its
+  worked treatment of depth-first and breadth-first search is the clearest
+  short account of the traversals used to check that a map's graph is a single
+  connected component. Its pseudocode convention is also the one this document
+  borrows: `snake_case` identifiers rather than mathematical symbols.
+
+**Heuristic search**
+
+- Hart, P. E., Nilsson, N. J., and Raphael, B. "A Formal Basis for the Heuristic
+  Determination of Minimum Cost Paths." *IEEE Transactions on Systems Science
+  and Cybernetics*, 1968. The original A* paper, including the admissibility
+  condition relied on in section 3.3.
+- Russell, S., and Norvig, P. *Artificial Intelligence: A Modern Approach*.
+  Informed search, admissible and consistent heuristics, and the consequences of
+  giving up admissibility deliberately.
+
+**Line simplification**
+
+- Ramer, U. "An iterative procedure for the polygonal approximation of plane
+  curves." *Computer Graphics and Image Processing*, 1972.
+- Douglas, D. H., and Peucker, T. K. "Algorithms for the reduction of the number
+  of points required to represent a digitized line or its caricature." *The
+  Canadian Cartographer*, 1973.
+
+**Clustering**
+
+- Hartigan, J. A. *Clustering Algorithms*, Wiley, 1975. The leader algorithm,
+  and a clear treatment of why the number of clusters is sometimes an output
+  rather than an input.
+
+**Directional statistics**
+
+- Mardia, K. V., and Jupp, P. E. *Directional Statistics*, Wiley. Circular means,
+  resultant length as a concentration measure, and the reasons arithmetic means
+  of angles are wrong.
+
+**Decision-making under uncertainty**
+
+- Sutton, R. S., and Barto, A. G. *Reinforcement Learning: An Introduction*, 2nd
+  edition, MIT Press, 2018. Multi-armed bandits and the
+  exploration-exploitation trade-off — cited here principally to explain why
+  this project deliberately declines the usual objective.
+
+**Game AI and steering**
+
+- Millington, I., and Funge, J. *Artificial Intelligence for Games*, 2nd edition.
+  Navigation meshes, waypoint graphs, path smoothing, and the layered movement
+  model whose lower layers this project has to live without.
+- Reynolds, C. W. "Steering Behaviors for Autonomous Characters." *Game
+  Developers Conference*, 1999. The origin of the steering model, and useful for
+  understanding exactly what a steering primitive does and does not promise.
+
+### Upstream project
+
+- ed0ard, *CS2-Bot-Improver*. The base plugin this work extends, and the source
+  of the native post-plant patches described in section 1.
+- CounterStrikeSharp, the .NET scripting framework this plugin is written
+  against.
