@@ -291,6 +291,11 @@ public class KaiBotTacticsPlugin : BasePlugin
     private float _overwatchLookahead = 1200.0f;
     private float _overwatchProbeStep = 200.0f;
 
+    // Ceiling on how many points are tested in one search. Each costs a
+    // reachability lookup and at most one trace, and this runs only for late
+    // bots that have not yet settled, so the budget is generous but finite.
+    private int _overwatchMaxProbes = 24;
+
     // slot -> where it settled, so the position is solved once rather than
     // rediscovered every tick.
     private readonly Dictionary<int, KaiPoint> _overwatchPost = new();
@@ -443,6 +448,171 @@ public class KaiBotTacticsPlugin : BasePlugin
     // rest: evenly spaced bearings from the middle land on the separate sites
     // and the routes between them.
     private readonly Dictionary<int, float> _ctZones = new();
+
+    // ------------------------------------------------------------------
+    // Counter-Terrorist roles
+    // ------------------------------------------------------------------
+    //
+    // Before this, every Counter-Terrorist did the same thing: take a patrol
+    // route, walk it, take another. The whole side ended up moving together
+    // and no site was ever occupied, so a Terrorist arriving to plant found
+    // an empty bombsite and five bots somewhere behind them.
+    //
+    // A real defence splits. Somebody sits on each site and does not leave it.
+    // The rest work the map in pairs, and a pair that has taken ground STOPS
+    // and holds it, because ground you are still walking through is ground you
+    // do not control.
+
+    private enum KaiCtRole
+    {
+        // Not assigned, or not a Counter-Terrorist.
+        None = 0,
+
+        // Sits on a bombsite and stays there, moving between lurk positions
+        // so the same corner is not held every round.
+        Anchor = 1,
+
+        // Works the map with a partner, then holds where it arrives.
+        Patrol = 2,
+    }
+
+    private readonly Dictionary<int, KaiCtRole> _ctRoles = new();
+
+    // slot -> the site an anchor is responsible for.
+    private readonly Dictionary<int, int> _ctAnchorSite = new();
+
+    // slot -> the lurk position it is going to, when it CHOSE that position,
+    // and when it actually ARRIVED there.
+    //
+    // The two timestamps are separate and that separation is the point. The
+    // rotation window runs from arrival, not from selection: a lurker that
+    // picked a spot 2500 units away and is still walking has not held anything
+    // yet, and telling it to pick somewhere new because the clock has run is
+    // how a session ends with 242 lines of walking and zero of lurking.
+    //
+    // A slot present in _ctAnchorPost but absent from _ctAnchorArrived is one
+    // that is still on its way.
+    private readonly Dictionary<int, KaiPoint> _ctAnchorPost = new();
+    private readonly Dictionary<int, float> _ctAnchorChosen = new();
+    private readonly Dictionary<int, float> _ctAnchorArrived = new();
+
+    // slot -> the partner it is patrolling with, and when the pair last moved.
+    private readonly Dictionary<int, int> _ctPartner = new();
+
+    // slot -> where a patrol has decided to hold, once it has arrived.
+    private readonly Dictionary<int, KaiPoint> _ctPatrolHold = new();
+    private readonly Dictionary<int, float> _ctPatrolHoldSince = new();
+
+    // How many bots sit on a site rather than patrolling. ONE, in total,
+    // across the whole map — not one per site.
+    //
+    // Five defenders split as one lurker and four patrollers in two pairs. Two
+    // lurkers would leave only three to work the map, which is one pair and a
+    // straggler, and the straggler dies to the first contact it makes without
+    // trading. One pair short is a worse loss than one site uncovered, because
+    // the patrols are what find the Terrorists in the first place.
+    //
+    // The lurker's site is drawn at random each round, so neither site is
+    // reliably empty and neither is reliably occupied.
+    private int _ctAnchorCount = 1;
+
+    // Where this round's lurker plays. Chosen once per round and kept, so a
+    // team mate dying does not move it somewhere else mid-round.
+    //
+    // Values 0 upwards are plant site indices. KaiFlankZone is the third
+    // option: deep in Terrorist territory, behind them.
+    private int _ctAnchorSiteThisRound = -1;
+
+    // The lurker's third option, and the one that wins rounds nothing else
+    // does.
+    //
+    // A defender sitting in enemy territory is not defending a site, it is
+    // cutting rotations. The Terrorists commit to a site, the round develops,
+    // and then somebody who has been quietly standing behind them the whole
+    // time kills the rotation coming to help, or the drop-back, or the player
+    // who has just walked out of a fight with forty health and no idea anyone
+    // is there. It is the same behaviour as lurking a site — walk in quietly,
+    // hold a good angle, move occasionally — pointed at the other end of the
+    // map.
+    //
+    // Its interpretation is deliberately broader than a site lurk. A site has
+    // a centre and a radius; enemy territory is a region, so the search radius
+    // is much larger and the position is allowed to be anywhere in it.
+    private const int KaiFlankZone = -2;
+
+    // How likely the lurker is to play the deep flank rather than a site.
+    // A third of rounds, so it is a genuine threat rather than a gimmick, and
+    // still leaves the sites lurked more often than not.
+    private float _ctFlankChance = 0.34f;
+
+    // How far from the Terrorist spawn centroid counts as their territory.
+    // Generous on purpose: the useful flank positions are on the approaches
+    // out of spawn, not in the spawn box itself.
+    private float _ctFlankRadius = 2600.0f;
+
+    // How near the Terrorist spawn is too near. Standing in the spawn box
+    // gets the lurker killed by five players at once on the first contact.
+    private float _ctFlankMinDistance = 700.0f;
+
+    // A flanker repositions more often than a site lurker. It is behind a
+    // moving enemy, so what was a good angle two rotations ago is now
+    // somewhere they have already walked past.
+    private float _ctFlankRotateMin = 12.0f;
+    private float _ctFlankRotateMax = 26.0f;
+
+    // Longest a lurker will spend travelling to a position before giving up on
+    // it and choosing another. Without this a spot it cannot reach becomes a
+    // spot it walks towards for the whole round.
+    private float _ctLurkTravelTimeout = 40.0f;
+
+    // Run until this near the lurk, then walk the rest.
+    //
+    // Running the whole way arrives faster and arrives loudly, and a lurker
+    // whose footsteps announce it has given away the only advantage it has.
+    // Running the long empty stretch and walking the last part is what a
+    // person does, and it is the difference between being in position by the
+    // time the round matters and never being in position at all.
+    private float _ctLurkQuietDistance = 900.0f;
+
+    // How long an anchor holds one lurk position before moving to another.
+    // Randomised between these so the rotation is not on a readable clock.
+    private float _ctAnchorRotateMin = 18.0f;
+    private float _ctAnchorRotateMax = 40.0f;
+
+    // How far from a site centre counts as lurking on that site.
+    //
+    // The old height, coverage and jitter weights that used to sit here are
+    // gone with the approach that needed them. Lurk positions are no longer
+    // picked from the solver's seven CT posts by angle coverage; they are
+    // searched out of the breadcrumb graph on their own terms. See the lurk
+    // finder further down.
+    private float _ctAnchorSiteRadius = 1500.0f;
+
+    // How long a patrol pair walks before it stops and holds what it has
+    // taken. Ground you are still moving through is ground you do not control.
+    private float _ctPatrolAdvanceSeconds = 22.0f;
+
+    // How far apart the two members of a pair hold.
+    private float _ctPairSpacing = 300.0f;
+
+    // Whether the side converges into a crossfire on a sighted bomb carrier.
+    private bool _ctRingTheCarrier = true;
+
+    // How far a Counter-Terrorist will travel to join a crossfire on the
+    // carrier. Beyond this the round will be decided before it arrives.
+    private float _ctCarrierRingRange = 2600.0f;
+
+    // The radius of the ring itself. Far enough apart that the carrier cannot
+    // hold one angle against all of it, near enough that everybody's shots
+    // land.
+    private float _ctCarrierRingHoldRadius = 700.0f;
+
+    // Last known carrier position and when it was seen.
+    private KaiPoint? _carrierSeenAt;
+    private float _carrierSeenWhen;
+
+    // How long a carrier sighting stays actionable.
+    private float _carrierMemorySeconds = 6.0f;
     private KaiPoint? _mapCentre;
     private float _nextZoneRefresh;
 
@@ -1374,6 +1544,10 @@ public class KaiBotTacticsPlugin : BasePlugin
         _routeStalls.Clear();
         _pathing?.Clear();
 
+        // Lurk shortlists are solved against this map's breadcrumb graph, so
+        // they belong to the map and not to the round.
+        _lurkShortlist.Clear();
+
         // Built here rather than lazily on first use, so the retake director
         // has its follower before the first plant of the map rather than
         // whenever a T bot happens to be the first to want one.
@@ -1422,6 +1596,19 @@ public class KaiBotTacticsPlugin : BasePlugin
         _routeBestAt.Clear();
         _routeStalls.Clear();
         _pathing?.Clear();
+
+        // Roles, lurks and holds are all decided fresh each round.
+        _ctRoles.Clear();
+        _ctAnchorSite.Clear();
+        _ctAnchorPost.Clear();
+        _ctAnchorChosen.Clear();
+        _ctAnchorArrived.Clear();
+        _ctPartner.Clear();
+        _ctPatrolHold.Clear();
+        _ctPatrolHoldSince.Clear();
+        _ctAnchorSiteThisRound = -1;
+        _carrierSeenAt = null;
+        _carrierSeenWhen = 0.0f;
 
         // A new round is a new journey. Nobody is mid-rotation, and any knife
         // drawn for speed belongs to a round that is over.
@@ -3336,6 +3523,22 @@ public class KaiBotTacticsPlugin : BasePlugin
             _sprintSeen.Remove(victim.Slot);
             _overwatchPost.Remove(victim.Slot);
 
+            // Its lurk is free for somebody else, and its partner is now
+            // alone. Roles are reassigned on the next tick because the living
+            // roster has changed.
+            _ctAnchorPost.Remove(victim.Slot);
+            _ctAnchorChosen.Remove(victim.Slot);
+            _ctAnchorArrived.Remove(victim.Slot);
+            _ctPatrolHold.Remove(victim.Slot);
+            _ctPatrolHoldSince.Remove(victim.Slot);
+
+            if (_ctPartner.TryGetValue(victim.Slot, out int orphan))
+            {
+                _ctPartner.Remove(orphan);
+            }
+
+            _ctPartner.Remove(victim.Slot);
+
             if (_tWatchClaims.Remove(victim.Slot))
             {
                 KaiLog.Event(nameof(OnPlayerDeath),
@@ -3594,6 +3797,28 @@ public class KaiBotTacticsPlugin : BasePlugin
                 handled = ApplyTerroristHold(player, pawn, origin, now);
             }
 
+            // Killing the carrier wins the round outright, so this outranks
+            // holding ground. Anchors are excluded inside the function: if the
+            // ring fails, the bot still on the site is the reason the round is
+            // not already lost.
+            if (!handled)
+            {
+                handled = ApplyCarrierRing(player, pawn, origin, now);
+            }
+
+            // Sit on a site, or hold the ground a patrol has taken. Both sit
+            // above the route follower, because both are decisions to STOP
+            // walking and the route follower's only opinion is to keep going.
+            if (!handled)
+            {
+                handled = ApplyCtAnchor(player, pawn, origin, now);
+            }
+
+            if (!handled)
+            {
+                handled = ApplyPatrolHold(player, pawn, origin, now);
+            }
+
             if (!handled)
             {
                 handled = ApplyLooseBombGuard(player, pawn, origin);
@@ -3617,6 +3842,7 @@ public class KaiBotTacticsPlugin : BasePlugin
         if (!_bombPlanted)
         {
             RefreshCtZones(now);
+            AssignCtRoles(now);
         }
 
         // If the director gave up at plant time because no CT bots were alive
@@ -4203,47 +4429,59 @@ public class KaiBotTacticsPlugin : BasePlugin
         }
 
         float floor = range * (1.0f - _overwatchRangeTolerance);
-        float heading = TravelHeading(player, pawn, origin);
-        float radians = heading * MathF.PI / 180.0f;
-
-        float dx = MathF.Cos(radians);
-        float dy = MathF.Sin(radians);
-
         float eyeHeight = pawn.ViewOffset.Z;
+
+        // Build the list of places to test, in the order the bot will pass
+        // through them. This is the whole fix: the path the bot is going to
+        // walk, corners included, rather than a straight line drawn from where
+        // it happens to be standing.
+        var probes = BuildOverwatchProbes(player, pawn, origin);
+
+        if (probes.Count == 0)
+        {
+            KaiLog.Throttled($"owprobes:{player.Slot}", nameof(FindOverwatchAhead),
+                $"slot {player.Slot} has no path ahead to probe for an overwatch line", 5.0f);
+
+            return null;
+        }
 
         var bombTarget = new Vector(
             _bombPos.X, _bombPos.Y, _bombPos.Z + KaiHeights.BombWatch);
 
-        for (float step = 0.0f; step <= _overwatchLookahead; step += _overwatchProbeStep)
+        int tested = 0;
+        int rejectedFar = 0;
+        int rejectedBlind = 0;
+        int rejectedUnreachable = 0;
+
+        foreach (var probe in probes)
         {
-            var probe = new KaiPoint(
-                origin.X + (dx * step),
-                origin.Y + (dy * step),
-                origin.Z);
+            tested++;
 
             float probeToBomb = _bombPos.DistanceXY(probe.X, probe.Y);
 
             // Still too far out for this weapon. Keep walking the probe
-            // forward rather than giving up.
+            // forward along the path rather than giving up.
             if (probeToBomb > range)
             {
+                rejectedFar++;
                 continue;
             }
 
-            // Past the near edge of the band and inside the ring. Everything
-            // further along is closer still, so there is nothing left to find.
+            // Past the near edge of the band and inside the ring. The path
+            // continues towards the bomb, so everything after this is closer
+            // still and there is nothing left to find.
             if (probeToBomb < floor && probeToBomb < _tPostMaxBombDistance)
             {
                 break;
             }
 
-            // Is the probe somewhere a bot could actually stand? A point 800
-            // units down a heading can be inside a wall, and settling on one
-            // would send the bot to a position it can never reach.
-            if (step > 0.0f
-                && (!_crumbs.IsUsable
-                    || !_crumbs.IsReachable(probe.X, probe.Y, probe.Z, _snapRadii[0])))
+            // Somewhere a bot could actually stand? Waypoints always are,
+            // because they came off the breadcrumb graph, but the interpolated
+            // points between them need checking.
+            if (!_crumbs.IsUsable
+                || !_crumbs.IsReachable(probe.X, probe.Y, probe.Z, _snapRadii[0]))
             {
+                rejectedUnreachable++;
                 continue;
             }
 
@@ -4251,34 +4489,169 @@ public class KaiBotTacticsPlugin : BasePlugin
 
             if (!KaiRayTraceBridge.CanSee(probeEye, bombTarget))
             {
+                rejectedBlind++;
                 continue;
-            }
-
-            // The bot also has to be able to get there. A clear line from
-            // where it stands to the probe is not a path, but it rules out
-            // probes on the far side of the wall it is currently behind.
-            if (step > 0.0f)
-            {
-                var fromEye = new Vector(origin.X, origin.Y, origin.Z + eyeHeight);
-
-                if (!KaiRayTraceBridge.CanSee(fromEye, probeEye))
-                {
-                    continue;
-                }
             }
 
             bombDistanceAtPost = probeToBomb;
 
             KaiLog.Event(nameof(FindOverwatchAhead),
-                $"slot {player.Slot} found its overwatch line {step:F0} units ahead on " +
-                $"heading {heading:F0}: from there the bomb is visible at " +
-                $"{probeToBomb:F0} units, inside the {floor:F0} to {range:F0} band for " +
-                $"the weapon it is carrying");
+                $"slot {player.Slot} found its overwatch line at probe {tested} of " +
+                $"{probes.Count} along the path it is walking: " +
+                $"({probe.X:F0},{probe.Y:F0}), bomb visible at {probeToBomb:F0} units, " +
+                $"inside the {floor:F0} to {range:F0} band for its weapon. " +
+                $"Rejected {rejectedFar} still too far, {rejectedBlind} with no line, " +
+                $"{rejectedUnreachable} off the graph.");
 
             return probe;
         }
 
+        KaiLog.Throttled($"ownone:{player.Slot}", nameof(FindOverwatchAhead),
+            $"slot {player.Slot} tested {tested} point(s) along its path and found no " +
+            $"overwatch line: {rejectedFar} still too far, {rejectedBlind} with no line " +
+            $"to the bomb, {rejectedUnreachable} off the graph", 4.0f);
+
         return null;
+    }
+
+    // The points along the path this bot is actually going to walk, nearest
+    // first, as candidate overwatch positions.
+    //
+    // WHY NOT A STRAIGHT LINE
+    //
+    // The first version of this walked a straight line down TravelHeading and
+    // never found anything: 17 evaluations across two sessions, 17 of them
+    // reporting no clear line to the bomb anywhere in the probe range, and not
+    // one bot ever settled.
+    //
+    // The reason is geometric rather than a coding error. A late defender is
+    // almost always coming down a corridor, and the bomb comes into view
+    // AROUND A CORNER. A straight probe from the bot's current position tests
+    // only positions on the bot's current line, and the bomb is not visible
+    // from any of them, because if it were the bot could already see it.
+    // Probing further along the same blocked line finds more of the same wall.
+    //
+    // The path the bot will walk turns those corners. So this walks the
+    // remaining route waypoints, interpolating between them at the probe step
+    // so a long leg is not tested only at its ends, and hands back the whole
+    // ordered list.
+    //
+    // FALLING BACK
+    //
+    // A bot with no route of ours is being moved by native pathing, and there
+    // is nothing to walk. Rather than refusing, it falls back to the straight
+    // line, which is no worse than the old behaviour and occasionally right on
+    // an open site.
+    private List<KaiPoint> BuildOverwatchProbes(
+        CCSPlayerController player, CCSPlayerPawn pawn, Vector origin)
+    {
+        var probes = new List<KaiPoint>();
+        var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+        // Where the bot is standing is always the first candidate. If the line
+        // is already open from here, there is no reason to walk any further.
+        probes.Add(here);
+
+        // Declared up front rather than as out-vars inside a condition. In a
+        // short-circuiting chain the compiler cannot prove the later ones were
+        // assigned, and definite-assignment analysis rejects the code even
+        // though it is correct at runtime.
+        KaiRoute? route = null;
+        int leg = 0;
+        bool haveRoute = false;
+
+        if (_routeOf.TryGetValue(player.Slot, out var candidateRoute)
+            && _routeLeg.TryGetValue(player.Slot, out int candidateLeg))
+        {
+            if (candidateRoute.Waypoints.Count > 0
+                && candidateLeg >= 0
+                && candidateLeg < candidateRoute.Waypoints.Count)
+            {
+                route = candidateRoute;
+                leg = candidateLeg;
+                haveRoute = true;
+            }
+        }
+
+        if (haveRoute && route != null)
+        {
+            bool reversing = _routeReversing.GetValueOrDefault(player.Slot);
+
+            var from = here;
+            float walked = 0.0f;
+            int cursor = leg;
+
+            while (walked < _overwatchLookahead
+                   && cursor >= 0
+                   && cursor < route.Waypoints.Count
+                   && probes.Count < _overwatchMaxProbes)
+            {
+                var waypoint = route.Waypoints[cursor];
+                float legLength = waypoint.DistanceXY(from.X, from.Y);
+
+                // Interpolate along this leg so a long corridor is tested at
+                // intervals rather than only where it happens to bend.
+                if (legLength > _overwatchProbeStep)
+                {
+                    int steps = (int)MathF.Floor(legLength / _overwatchProbeStep);
+
+                    for (int i = 1; i <= steps && probes.Count < _overwatchMaxProbes; i++)
+                    {
+                        float fraction = (i * _overwatchProbeStep) / legLength;
+
+                        probes.Add(new KaiPoint(
+                            from.X + ((waypoint.X - from.X) * fraction),
+                            from.Y + ((waypoint.Y - from.Y) * fraction),
+                            from.Z + ((waypoint.Z - from.Z) * fraction)));
+                    }
+                }
+
+                if (probes.Count < _overwatchMaxProbes)
+                {
+                    probes.Add(waypoint);
+                }
+
+                walked += legLength;
+                from = waypoint;
+
+                if (reversing)
+                {
+                    cursor--;
+                }
+                else
+                {
+                    cursor++;
+                }
+            }
+
+            KaiLog.Throttled($"owpath:{player.Slot}", nameof(BuildOverwatchProbes),
+                $"slot {player.Slot} has {probes.Count} probe(s) along {walked:F0} units of " +
+                $"'{route.Name}' from leg {leg}", 5.0f);
+
+            return probes;
+        }
+
+        // No route of ours. Straight line, as before.
+        float heading = TravelHeading(player, pawn, origin);
+        float radians = heading * MathF.PI / 180.0f;
+        float dx = MathF.Cos(radians);
+        float dy = MathF.Sin(radians);
+
+        for (float step = _overwatchProbeStep;
+             step <= _overwatchLookahead && probes.Count < _overwatchMaxProbes;
+             step += _overwatchProbeStep)
+        {
+            probes.Add(new KaiPoint(
+                origin.X + (dx * step),
+                origin.Y + (dy * step),
+                origin.Z));
+        }
+
+        KaiLog.Throttled($"owstraight:{player.Slot}", nameof(BuildOverwatchProbes),
+            $"slot {player.Slot} has no route of ours, falling back to {probes.Count} " +
+            $"probe(s) along a straight line on heading {heading:F0}", 5.0f);
+
+        return probes;
     }
 
     // Sit still and watch the bomb.
@@ -7509,6 +7882,7 @@ public class KaiBotTacticsPlugin : BasePlugin
         // without a single one of those consumers needing to know the contact
         // was not earned.
         TrackHumansUnfairly(now);
+        NoteCarrierSighting(now);
 
         if (!_supportFire)
         {
@@ -8057,6 +8431,1214 @@ public class KaiBotTacticsPlugin : BasePlugin
     // an evenly spaced bearing from it, and on a normal two-site map those
     // bearings land on the separate sites and the routes between them. No map
     // knowledge required, and it generalises to Nuke and Vertigo unchanged.
+    // Remember where the bomb carrier was last seen by anybody on this side.
+    //
+    // Called from the contact refresh. The carrier is the only Terrorist whose
+    // position is worth the whole side reacting to: kill anybody else and the
+    // bomb still arrives, kill the carrier and it does not.
+    private void NoteCarrierSighting(float now)
+    {
+        if (!_ctRingTheCarrier || _bombPlanted)
+        {
+            return;
+        }
+
+        int carrier = BombCarrierSlot();
+
+        if (carrier < 0)
+        {
+            return;
+        }
+
+        var holder = Utilities.GetPlayerFromSlot(carrier);
+        var origin = holder?.PlayerPawn?.Value?.AbsOrigin;
+
+        if (origin == null)
+        {
+            return;
+        }
+
+        // Only if somebody on the other side can actually see them. This is
+        // not the handicap: it is an ordinary sighting, shared across the side
+        // the way a callout would be.
+        bool seen = false;
+
+        foreach (var c in _contacts)
+        {
+            if (c.ReportedBy < 0)
+            {
+                continue;
+            }
+
+            if (c.Position.DistanceXY(origin.X, origin.Y) < 200.0f)
+            {
+                seen = true;
+                break;
+            }
+        }
+
+        if (!seen)
+        {
+            return;
+        }
+
+        bool fresh = _carrierSeenAt == null
+                     || _carrierSeenAt.DistanceXY(origin.X, origin.Y) > 400.0f;
+
+        _carrierSeenAt = new KaiPoint(origin.X, origin.Y, origin.Z);
+        _carrierSeenWhen = now;
+
+        if (fresh)
+        {
+            KaiLog.Event(nameof(NoteCarrierSighting),
+                $"the bomb carrier has been spotted at " +
+                $"({origin.X:F0},{origin.Y:F0}). Every CT in range converges into a " +
+                $"crossfire on that position.");
+        }
+    }
+
+    // Converge on a sighted bomb carrier and surround them.
+    //
+    // This is the one thing worth breaking a hold for. A carrier killed short
+    // of a site is a round won outright, and the way to kill one is from two
+    // directions at once so there is no angle they can hold back against.
+    //
+    // Reuses the guard sector fan: each bot is given a bearing around the
+    // target and takes up position on it, which produces a ring rather than a
+    // queue arriving down one corridor.
+    private bool ApplyCarrierRing(
+        CCSPlayerController player, CCSPlayerPawn pawn, Vector origin, float now)
+    {
+        if (!_ctRingTheCarrier || _bombPlanted || _carrierSeenAt == null)
+        {
+            return false;
+        }
+
+        if ((int)player.TeamNum != (int)CsTeam.CounterTerrorist)
+        {
+            return false;
+        }
+
+        if (now - _carrierSeenWhen > _carrierMemorySeconds)
+        {
+            // Stale. The carrier has moved and nobody has seen them since.
+            _carrierSeenAt = null;
+            _guardSectors.Clear();
+            _guardPositions.Clear();
+
+            return false;
+        }
+
+        float toCarrier = _carrierSeenAt.DistanceXY(origin.X, origin.Y);
+
+        if (toCarrier > _ctCarrierRingRange)
+        {
+            return false;
+        }
+
+        // The lurker does not leave its position for this, whichever of the
+        // three it is playing.
+        //
+        // On a site, somebody has to be there when the carrier arrives, and if
+        // the ring fails the lurker is the reason the round is not already
+        // lost. On the deep flank it is already behind the enemy, which is
+        // worth more than another body in the crossfire and cannot be got back
+        // once given up.
+        if (_ctRoles.GetValueOrDefault(player.Slot) == KaiCtRole.Anchor)
+        {
+            return false;
+        }
+
+        if (!_guardSectors.ContainsKey(player.Slot))
+        {
+            var slots = new List<int>(_guardSectors.Keys) { player.Slot };
+            AssignGuardSectors(_carrierSeenAt, slots);
+        }
+
+        var intent = GetOrCreateIntent(player.Slot);
+        var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+        float myBearing = KaiFormation.Bearing(
+            _carrierSeenAt.X, _carrierSeenAt.Y, origin.X, origin.Y);
+
+        _guardSectors.TryGetValue(player.Slot, out float sector);
+        float gap = KaiFormation.AngleGap(myBearing, sector);
+
+        _guardPositions[player.Slot] = here;
+
+        var aimPoint = new KaiPoint(
+            _carrierSeenAt.X, _carrierSeenAt.Y, _carrierSeenAt.Z + KaiHeights.Chest);
+
+        // On the right side of the target and close enough to shoot: stop and
+        // shoot. Walking further only closes the crossfire into a huddle.
+        if (gap <= 50.0f && toCarrier <= _ctCarrierRingHoldRadius)
+        {
+            intent.Anchored = true;
+            intent.Watch = aimPoint;
+            intent.SourceName = "carrier:crossfire";
+
+            KaiLog.Throttled($"ring:{player.Slot}", nameof(ApplyCarrierRing),
+                $"slot {player.Slot} holding the crossfire on the carrier from " +
+                $"{toCarrier:F0} units, bearing {myBearing:F0} against its arc " +
+                $"{sector:F0}", 3.0f);
+
+            return true;
+        }
+
+        // Move onto its own bearing at ring radius, rather than straight at
+        // the carrier. Everybody walking straight in arrives from one side.
+        float radians = sector * MathF.PI / 180.0f;
+
+        var ringPosition = new KaiPoint(
+            _carrierSeenAt.X + (MathF.Cos(radians) * _ctCarrierRingHoldRadius),
+            _carrierSeenAt.Y + (MathF.Sin(radians) * _ctCarrierRingHoldRadius),
+            _carrierSeenAt.Z);
+
+        if (!Pathing().Steer(player.Slot, here, ringPosition, now, intent, "carrier:ring"))
+        {
+            intent.SteerTowards = ringPosition;
+        }
+
+        intent.SourceName = "carrier:closing";
+        intent.Watch = aimPoint;
+
+        KaiLog.Throttled($"ringmove:{player.Slot}", nameof(ApplyCarrierRing),
+            $"slot {player.Slot} closing on the carrier's bearing {sector:F0}, " +
+            $"{toCarrier:F0} units out (arc gap {gap:F0})", 3.0f);
+
+        return true;
+    }
+
+    // A patrol pair that has taken ground stops and holds it.
+    //
+    // The old behaviour was to walk a route, finish it, take another, and keep
+    // walking for the whole round. That is map control in name only: ground
+    // you are still moving through is ground you do not control, and a bot in
+    // motion loses to a bot holding an angle onto it.
+    //
+    // So a patrol advances for a while and then plants itself, watching the
+    // way the Terrorists must come, and lets them walk into it instead.
+    //
+    // Returns true once the pair is holding. While still advancing it returns
+    // false so the ordinary route follower keeps driving them.
+    private bool ApplyPatrolHold(
+        CCSPlayerController player, CCSPlayerPawn pawn, Vector origin, float now)
+    {
+        if (!_ctRoles.TryGetValue(player.Slot, out var role) || role != KaiCtRole.Patrol)
+        {
+            return false;
+        }
+
+        if (_bombPlanted)
+        {
+            return false;
+        }
+
+        // Already holding somewhere.
+        if (_ctPatrolHold.TryGetValue(player.Slot, out var held))
+        {
+            return HoldPatrolPost(player, pawn, origin, now, held);
+        }
+
+        // Has this pair advanced long enough to stop?
+        float began = _ctPatrolHoldSince.GetValueOrDefault(player.Slot, 0.0f);
+
+        if (began <= 0.0f)
+        {
+            _ctPatrolHoldSince[player.Slot] = now;
+            return false;
+        }
+
+        if (now - began < _ctPatrolAdvanceSeconds)
+        {
+            return false;
+        }
+
+        // Stop here, but not on top of the partner. The pair is only worth
+        // having if the second one can shoot whoever kills the first.
+        var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+        if (_ctPartner.TryGetValue(player.Slot, out int partner)
+            && _ctPatrolHold.TryGetValue(partner, out var partnerPost))
+        {
+            if (partnerPost.DistanceXY(here.X, here.Y) < _ctPairSpacing)
+            {
+                // Too close to the partner. Keep walking a little; the next
+                // check will find somewhere with daylight between them.
+                KaiLog.Throttled($"patrolclose:{player.Slot}", nameof(ApplyPatrolHold),
+                    $"slot {player.Slot} would hold {partnerPost.DistanceXY(here.X, here.Y):F0} " +
+                    $"units from its partner, which is inside the {_ctPairSpacing:F0} unit " +
+                    $"pair spacing. Advancing a little further first.", 4.0f);
+
+                return false;
+            }
+        }
+
+        _ctPatrolHold[player.Slot] = here;
+
+        KaiComms.CallBy(player.Slot, $"patrolhold:{player.Slot}",
+            "holding here, let them come to us", 20.0f);
+
+        KaiLog.Event(nameof(ApplyPatrolHold),
+            $"slot {player.Slot} has advanced for {now - began:F0}s and is holding at " +
+            $"({here.X:F0},{here.Y:F0})" +
+            (_ctPartner.TryGetValue(player.Slot, out int mate)
+                ? $" with slot {mate} as its partner"
+                : " alone") +
+            ". It will make the Terrorists come to it rather than walking into them.");
+
+        return HoldPatrolPost(player, pawn, origin, now, here);
+    }
+
+    // Sit on a chosen patrol position and watch.
+    private bool HoldPatrolPost(
+        CCSPlayerController player, CCSPlayerPawn pawn, Vector origin, float now, KaiPoint post)
+    {
+        var intent = GetOrCreateIntent(player.Slot);
+        float drift = post.DistanceXY(origin.X, origin.Y);
+
+        if (drift > 120.0f)
+        {
+            var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+            if (!Pathing().Steer(player.Slot, here, post, now, intent, "patrolhold"))
+            {
+                intent.SteerTowards = post;
+            }
+
+            intent.Walk = true;
+            intent.SourceName = "patrol:returning";
+
+            if (!ApplyTransitClearing(player, pawn, origin, intent))
+            {
+                intent.Watch = new KaiPoint(post.X, post.Y, post.Z + KaiHeights.Chest);
+            }
+
+            return true;
+        }
+
+        Pathing().Forget(player.Slot);
+
+        intent.Anchored = true;
+        intent.SourceName = "patrol:holding";
+
+        var standing = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+        if (!ApplyGlanceSweep(player, pawn, standing, now, intent, "patrol"))
+        {
+            // No learned angle from here. Watch the map centre, which is where
+            // the Terrorists have to come from.
+            if (_mapCentre != null)
+            {
+                intent.Watch = new KaiPoint(
+                    _mapCentre.X, _mapCentre.Y, _mapCentre.Z + KaiHeights.Chest);
+            }
+        }
+
+        KaiLog.Throttled($"patrol:{player.Slot}", nameof(HoldPatrolPost),
+            $"slot {player.Slot} holding its patrol position, waiting", 6.0f);
+
+        return true;
+    }
+
+    // Split the Counter-Terrorist side into site anchors and patrol pairs.
+    //
+    // Called once a round, and again whenever the living roster changes enough
+    // that the split no longer makes sense. Anchors first, because an occupied
+    // site is worth more than a third bot walking about, then the remainder
+    // paired off.
+    //
+    // Pairing matters as much as the anchoring. Two bots working together can
+    // trade: the first to make contact dies, the second kills whoever did it,
+    // and the site holds. A lone patrol that makes contact simply dies.
+    private void AssignCtRoles(float now)
+    {
+        var living = new List<int>();
+
+        foreach (var p in KaiPlayers.All())
+        {
+            if (p == null || !p.IsValid || !p.IsBot || p.IsHLTV)
+            {
+                continue;
+            }
+
+            if ((int)p.TeamNum != (int)CsTeam.CounterTerrorist || !p.PawnIsAlive)
+            {
+                continue;
+            }
+
+            living.Add(p.Slot);
+        }
+
+        living.Sort();
+
+        // Already correct for this roster? Reassigning every tick would
+        // reshuffle roles under bots that are mid-way through carrying one out.
+        bool same = living.Count == _ctRoles.Count;
+
+        if (same)
+        {
+            foreach (int slot in living)
+            {
+                if (!_ctRoles.ContainsKey(slot))
+                {
+                    same = false;
+                    break;
+                }
+            }
+        }
+
+        if (same)
+        {
+            return;
+        }
+
+        _ctRoles.Clear();
+        _ctPartner.Clear();
+
+        // _ctAnchorSite is deliberately NOT cleared here. It is what tells the
+        // loop below whether a bot was already the lurker, which is what stops
+        // the lurker being made to pick a new position every time somebody
+        // else on the side dies.
+
+        if (living.Count == 0)
+        {
+            return;
+        }
+
+        int siteCount = _map?.PlantSites.Count ?? 0;
+
+        // One lurker, provided there is anybody left to patrol as well. A lone
+        // survivor is not a lurker, it is the whole defence, and pinning it to
+        // one site loses every round where the bomb goes to the other.
+        int wantAnchors = 0;
+
+        if (siteCount > 0 && living.Count >= 2)
+        {
+            wantAnchors = _ctAnchorCount;
+        }
+
+        // Draw where the lurker plays, once per round, and keep it.
+        //
+        // Three options rather than two: either bombsite, or the deep flank in
+        // Terrorist territory. The flank is only offered when the Terrorist
+        // spawn has actually been sampled, which needs one live round.
+        bool zoneDrawn = _ctAnchorSiteThisRound == KaiFlankZone
+                         || (_ctAnchorSiteThisRound >= 0 && _ctAnchorSiteThisRound < siteCount);
+
+        if (!zoneDrawn && siteCount > 0)
+        {
+            bool flankAvailable = _spawns.ContainsKey("t");
+
+            if (flankAvailable && _routeRandom.NextDouble() < _ctFlankChance)
+            {
+                _ctAnchorSiteThisRound = KaiFlankZone;
+
+                KaiLog.Event(nameof(AssignCtRoles),
+                    "this round's lurker plays the deep flank in Terrorist territory " +
+                    "rather than sitting on a site. It walks in quietly and holds angles " +
+                    "behind them, to cut rotations rather than defend ground.");
+            }
+            else
+            {
+                _ctAnchorSiteThisRound = _routeRandom.Next(siteCount);
+
+                KaiLog.Event(nameof(AssignCtRoles),
+                    $"this round's lurker sits on site {_ctAnchorSiteThisRound} " +
+                    $"of {siteCount}, drawn at random" +
+                    (flankAvailable ? "" : " (no Terrorist spawn sampled yet, so the deep " +
+                                           "flank was not an option)"));
+            }
+        }
+
+        int assigned = 0;
+
+        for (int i = 0; i < wantAnchors && i < living.Count; i++)
+        {
+            int slot = living[i];
+
+            bool wasAnchor = _ctAnchorSite.ContainsKey(slot);
+
+            _ctRoles[slot] = KaiCtRole.Anchor;
+            _ctAnchorSite[slot] = _ctAnchorSiteThisRound;
+
+            // Only force a fresh lurk on a bot that has just taken the role.
+            // Reassignment happens every time the roster changes, and a lurker
+            // that got up and moved every time a team mate died somewhere else
+            // would spend the round walking rather than lurking.
+            if (!wasAnchor)
+            {
+                _ctAnchorPost.Remove(slot);
+                _ctAnchorChosen.Remove(slot);
+                _ctAnchorArrived.Remove(slot);
+            }
+
+            assigned++;
+        }
+
+        // Anybody who was an anchor and is not one now loses the role's state.
+        // Note the flank sentinel is a valid zone, so the check above tests
+        // membership rather than range.
+        var staleAnchors = new List<int>();
+
+        foreach (var kv in _ctAnchorSite)
+        {
+            if (_ctRoles.GetValueOrDefault(kv.Key) != KaiCtRole.Anchor)
+            {
+                staleAnchors.Add(kv.Key);
+            }
+        }
+
+        foreach (int slot in staleAnchors)
+        {
+            _ctAnchorSite.Remove(slot);
+            _ctAnchorPost.Remove(slot);
+            _ctAnchorChosen.Remove(slot);
+            _ctAnchorArrived.Remove(slot);
+        }
+
+        // Everybody else patrols, paired off in order.
+        var rest = new List<int>();
+
+        for (int i = assigned; i < living.Count; i++)
+        {
+            rest.Add(living[i]);
+            _ctRoles[living[i]] = KaiCtRole.Patrol;
+            _ctPatrolHold.Remove(living[i]);
+            _ctPatrolHoldSince.Remove(living[i]);
+        }
+
+        for (int i = 0; i + 1 < rest.Count; i += 2)
+        {
+            _ctPartner[rest[i]] = rest[i + 1];
+            _ctPartner[rest[i + 1]] = rest[i];
+        }
+
+        // An odd bot out has no partner. It patrols alone, which is worse than
+        // patrolling in a pair and better than standing in spawn.
+        if (rest.Count % 2 == 1)
+        {
+            _ctPartner.Remove(rest[rest.Count - 1]);
+        }
+
+        var pairText = new List<string>();
+
+        foreach (var kv in _ctPartner)
+        {
+            if (kv.Key < kv.Value)
+            {
+                pairText.Add($"{kv.Key}+{kv.Value}");
+            }
+        }
+
+        KaiLog.Event(nameof(AssignCtRoles),
+            $"{living.Count} CT(s) split into {assigned} lurker(s) on site " +
+            $"{_ctAnchorSiteThisRound} and " +
+            $"{rest.Count} patroller(s) in pairs [{string.Join(" ", pairText)}]" +
+            (rest.Count % 2 == 1 ? $", with slot {rest[rest.Count - 1]} patrolling alone" : "") +
+            $". Sites on this map: {siteCount}.");
+    }
+
+    // A bot that sits on a bombsite and does not leave it.
+    //
+    // Chooses a lurk position from the solved posts for its site, holds it for
+    // a randomised interval, then moves to a different one. The rotation is
+    // the point: an anchor that holds the same corner every round is a corner
+    // the human clears first every round, and then the anchor is worth
+    // nothing.
+    //
+    // Position preference is deliberately not "best coverage". High ground
+    // over a site sees the whole of it, is awkward to clear, and is where a
+    // person would sit. A quiet corner with two angles is the other good
+    // answer. Both score well here; a spot in the open with excellent numbers
+    // does not.
+    private bool ApplyCtAnchor(
+        CCSPlayerController player, CCSPlayerPawn pawn, Vector origin, float now)
+    {
+        if (_map == null || !_ctRoles.TryGetValue(player.Slot, out var role))
+        {
+            return false;
+        }
+
+        if (role != KaiCtRole.Anchor)
+        {
+            return false;
+        }
+
+        if (_bombPlanted)
+        {
+            // After the plant the retake director owns this side.
+            return false;
+        }
+
+        if (!_ctAnchorSite.TryGetValue(player.Slot, out int site))
+        {
+            return false;
+        }
+
+        bool flanking = site == KaiFlankZone;
+
+        if (!flanking && (site < 0 || site >= _map.PlantSites.Count))
+        {
+            return false;
+        }
+
+        if (flanking && !_spawns.ContainsKey("t"))
+        {
+            // No Terrorist spawn sampled, so there is no territory to flank.
+            return false;
+        }
+
+        // Time to move to a different lurk position?
+        //
+        // The held position and the "do I need a new one" decision are kept as
+        // separate variables rather than one nullable and an inverted bool.
+        // The inverted form was correct at runtime but not provably so: the
+        // compiler cannot follow that a false "needPost" implies a non-null
+        // "post", because the relationship passes through a negation into a
+        // local, and it warned about the dereference further down.
+        KaiPoint? post = null;
+        bool havePost = false;
+
+        if (_ctAnchorPost.TryGetValue(player.Slot, out var existing))
+        {
+            post = existing;
+            havePost = true;
+        }
+
+        bool needPost = !havePost;
+        bool arrived = _ctAnchorArrived.TryGetValue(player.Slot, out float arrivedAt);
+
+        if (havePost && arrived)
+        {
+            // Standing on it. The rotation clock runs from here.
+            float held = now - arrivedAt;
+
+            // A flanker moves more often. It is behind an enemy that is
+            // themselves moving, so an angle that was good two rotations ago
+            // covers ground they have already walked past.
+            float low = flanking ? _ctFlankRotateMin : _ctAnchorRotateMin;
+            float high = flanking ? _ctFlankRotateMax : _ctAnchorRotateMax;
+
+            float window = low + ((float)_routeRandom.NextDouble() * (high - low));
+
+            if (held > window)
+            {
+                needPost = true;
+
+                if (post != null)
+                {
+                    KaiComms.CallBy(player.Slot, $"lurkoff:{player.Slot}",
+                        $"moving my lurk off {KaiCallouts.Describe(post, _bombPos)}", 12.0f);
+                }
+
+                KaiLog.Event(nameof(ApplyCtAnchor),
+                    $"slot {player.Slot} has HELD its lurk " +
+                    (flanking ? "in Terrorist territory" : $"on site {site}") +
+                    $" for {held:F0}s, moving somewhere else so the position is not readable");
+            }
+        }
+        else if (havePost && _ctAnchorChosen.TryGetValue(player.Slot, out float chosenAt))
+        {
+            // Still walking. Only give up if it has been travelling so long
+            // that the position is clearly out of reach, and say so plainly:
+            // this is a different event from a rotation and should not read
+            // like one in the log.
+            float travelling = now - chosenAt;
+
+            if (travelling > _ctLurkTravelTimeout)
+            {
+                needPost = true;
+
+                // A different call from the rotation one on purpose. "Moving
+                // off X" tells a team mate a position has been given up after
+                // being held; "can't get to X" tells them it was never held at
+                // all, which is a fact about the map worth knowing.
+                if (post != null)
+                {
+                    KaiComms.CallBy(player.Slot, $"lurkfail:{player.Slot}",
+                        $"can't reach my lurk at {KaiCallouts.Describe(post, _bombPos)}, " +
+                        $"finding another lurk", 12.0f);
+                }
+
+                KaiLog.Event(nameof(ApplyCtAnchor),
+                    $"slot {player.Slot} has been walking to its lurk for {travelling:F0}s " +
+                    $"without arriving. Giving up on that position and choosing another.");
+            }
+        }
+
+        if (needPost)
+        {
+            var chosen = ChooseLurkPost(player, site);
+
+            if (chosen == null)
+            {
+                KaiLog.Throttled($"noanchor:{player.Slot}", nameof(ApplyCtAnchor),
+                    $"slot {player.Slot} lurks " +
+                    (flanking ? "the deep flank" : $"site {site}") +
+                    $" but no position is available, falling through to the " +
+                    $"ordinary behaviour", 10.0f);
+
+                return false;
+            }
+
+            // Tell the side where it is going, by name.
+            //
+            // The place name comes from the callout table, which is read from
+            // disk and never rewritten once it exists, so this uses whatever
+            // names have been corrected by hand rather than any built-in ones.
+            // A lurk in an unnamed corner degrades to a distance from the
+            // bomb, which is at least true.
+            string goingTo = KaiCallouts.Describe(chosen, _bombPos);
+
+            KaiComms.CallBy(player.Slot, $"lurkgo:{player.Slot}",
+                flanking
+                    ? $"going deep, will lurk behind them around {goingTo}"
+                    : $"going to lurk {goingTo}",
+                12.0f);
+
+            post = chosen;
+            havePost = true;
+            _ctAnchorPost[player.Slot] = chosen;
+            _ctAnchorChosen[player.Slot] = now;
+
+            // Not there yet. Arrival is what starts the rotation clock.
+            _ctAnchorArrived.Remove(player.Slot);
+            arrived = false;
+        }
+
+        if (!havePost || post == null)
+        {
+            // Cannot happen: every path above either sets a position or
+            // returns. Kept as a real guard rather than a suppression, because
+            // the alternative is a null dereference in a per-tick hook, which
+            // takes the whole plugin down rather than one bot's behaviour.
+            KaiLog.Throttled($"anchornull:{player.Slot}", nameof(ApplyCtAnchor),
+                $"slot {player.Slot} reached the lurk hold with no position, which should " +
+                $"be impossible. Falling through to the ordinary behaviour.",
+                10.0f, KaiLogLevel.Error);
+
+            return false;
+        }
+
+        var intent = GetOrCreateIntent(player.Slot);
+        var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+        float gap = post.DistanceXY(origin.X, origin.Y);
+
+        if (gap > 90.0f)
+        {
+            // Walk there, quietly. An anchor announcing itself with footsteps
+            // on the way to its own hiding place has given the position away
+            // before it arrives.
+            if (!Pathing().Steer(player.Slot, here, post, now, intent, $"anchor:s{site}"))
+            {
+                intent.SteerTowards = post;
+            }
+
+            // Run the long part, walk the last of it.
+            //
+            // Walking the whole way is silent and it is also why the lurker
+            // never arrived: measured over a session, 242 lines of walking to
+            // a lurk and not one line of holding it, with a median 1526 units
+            // still to go. A lurker that is never in position is worth nothing
+            // however quietly it travels.
+            //
+            // So the empty stretch is run and the last stretch is walked. The
+            // footsteps that matter are the ones near the position, because
+            // those are the ones somebody is close enough to hear.
+            bool quietApproach = gap <= _ctLurkQuietDistance;
+
+            intent.Walk = quietApproach;
+            intent.SourceName = flanking ? "lurk:flank:moving" : $"lurk:s{site}:moving";
+
+            if (!ApplyTransitClearing(player, pawn, origin, intent))
+            {
+                intent.Watch = new KaiPoint(
+                    post.X, post.Y, post.Z + KaiHeights.Chest);
+            }
+
+            KaiLog.Throttled($"anchormove:{player.Slot}", nameof(ApplyCtAnchor),
+                $"slot {player.Slot} {(quietApproach ? "walking" : "running")} to its lurk " +
+                (flanking ? "in Terrorist territory" : $"on site {site}") +
+                $", {gap:F0} units to go", 3.0f);
+
+            return true;
+        }
+
+        // Arrived. Start the rotation clock now, once, rather than when the
+        // position was chosen.
+        if (!arrived)
+        {
+            _ctAnchorArrived[player.Slot] = now;
+
+            float travelled = now - _ctAnchorChosen.GetValueOrDefault(player.Slot, now);
+
+            KaiComms.CallBy(player.Slot, $"lurkset:{player.Slot}",
+                flanking
+                    ? $"lurking behind them now, {KaiCallouts.Describe(post, _bombPos)}"
+                    : $"lurk set {KaiCallouts.Describe(post, _bombPos)}",
+                25.0f);
+
+            KaiLog.Event(nameof(ApplyCtAnchor),
+                $"slot {player.Slot} is IN POSITION " +
+                (flanking ? "behind the Terrorists" : $"on site {site}") +
+                $" at ({post.X:F0},{post.Y:F0},{post.Z:F0}) after {travelled:F0}s of travel. " +
+                $"The rotation clock starts now.");
+        }
+
+        Pathing().Forget(player.Slot);
+
+        intent.Anchored = true;
+        intent.SourceName = flanking ? "lurk:flank:held" : $"lurk:s{site}:held";
+
+        string source = flanking ? "lurk:flank" : $"lurk:s{site}";
+
+        if (!ApplyGlanceSweep(player, pawn, here, now, intent, source))
+        {
+            // No learned angle from here. A site lurker watches the site; a
+            // flanker watches back towards Terrorist spawn, which is where
+            // whoever it is waiting for will come from.
+            if (flanking && _spawns.TryGetValue("t", out var tSpawn))
+            {
+                intent.Watch = new KaiPoint(
+                    tSpawn.X, tSpawn.Y, tSpawn.Z + KaiHeights.Chest);
+            }
+            else if (!flanking)
+            {
+                var centre = _map.PlantSites[site];
+                intent.Watch = new KaiPoint(centre.X, centre.Y, centre.Z + KaiHeights.Chest);
+            }
+        }
+
+        KaiLog.Throttled($"anchor:{player.Slot}", nameof(ApplyCtAnchor),
+            $"slot {player.Slot} lurking " +
+            (flanking ? "behind the Terrorists" : $"on site {site}") +
+            $" at ({post.X:F0},{post.Y:F0},{post.Z:F0})", 5.0f);
+
+        return true;
+    }
+
+    // ------------------------------------------------------------------
+    // Finding somewhere to lurk
+    // ------------------------------------------------------------------
+    //
+    // WHAT A LURK ACTUALLY IS
+    //
+    // The first version of this picked from the solver's CT posts, which is
+    // seven positions for an entire map, and every zone converged on the same
+    // coordinate because one of those seven satisfied two zones at once and
+    // had the highest angle coverage. That was the wrong data and the wrong
+    // question.
+    //
+    // The right data is the breadcrumb graph: every position anybody has ever
+    // stood on, a couple of thousand of them on a learned map, each with a
+    // count of how many times somebody stood there. That count is what makes
+    // the problem solvable, because a lurk is defined by traffic:
+    //
+    //   somewhere nobody walks        nobody clears it, so you survive
+    //   overlooking somewhere busy    people walk past, so you get kills
+    //   with a wall behind it         can only be approached from the front
+    //   above what it watches         sees more, awkward to clear from below
+    //   few ways in                   a corner, not an island
+    //
+    // Note how different that is from the question the solver answers. The
+    // solver ranks positions by how many known duel angles they SEE, which is
+    // what a site defender wants. A lurker also cares how many angles see IT,
+    // and would rather have two good ones and no exposure than forty and no
+    // cover.
+    //
+    // COST, AND WHY IT IS CACHED
+    //
+    // Scoring a few hundred candidates against sampled traffic costs a few
+    // thousand traces, which is a freezetime job rather than a per-tick one.
+    // Each zone is solved once per map and the best handful kept, spaced
+    // apart. The lurker then draws from that shortlist at random on every
+    // rotation, and that is where the round-to-round variety comes from: not
+    // from re-solving, but from a real choice among several good answers.
+
+    private sealed class KaiLurkSpot
+    {
+        public KaiPoint Position = new();
+        public float Score;
+        public int Traffic;
+        public int Overlooks;
+        public float Height;
+        public float BackWall;
+        public int OpenSides;
+    }
+
+    // zone -> the shortlist for it. Zone keys are plant site indices, or
+    // KaiFlankZone for Terrorist territory.
+    private readonly Dictionary<int, List<KaiLurkSpot>> _lurkShortlist = new();
+
+    // How many candidates a zone search considers. Each costs roughly a dozen
+    // traces, so this is the main cost dial.
+    private int _lurkMaxCandidates = 180;
+
+    // How many spots are kept per zone, and how far apart they must be, so the
+    // shortlist is genuinely different places rather than one place five times.
+    private int _lurkKeepPerZone = 6;
+    private float _lurkSpacing = 500.0f;
+
+    // A node with at least this fraction of the zone's busiest count is
+    // traffic worth watching. Relative rather than fixed, because a quiet
+    // corner of a quiet map still has a busiest corridor.
+    private float _lurkTrafficFraction = 0.35f;
+
+    // How far a lurk may be from the traffic it watches. Nearer than the floor
+    // and it is standing in the traffic; further than the ceiling and the shots
+    // do not land.
+    private float _lurkOverlookMin = 250.0f;
+    private float _lurkOverlookMax = 1600.0f;
+
+    // How many traffic samples each candidate is traced against.
+    private int _lurkTrafficSamples = 10;
+
+    // Scoring weights.
+    private float _lurkOverlookWeight = 8.0f;
+    private float _lurkHeightWeight = 0.04f;
+    private float _lurkCoverWeight = 14.0f;
+    private float _lurkTrafficPenalty = 1.6f;
+    private float _lurkExposurePenalty = 9.0f;
+
+    // Pick somewhere to lurk in a zone.
+    //
+    // Builds the zone's shortlist on first use, then draws from it, excluding
+    // whatever this bot is standing on now so that a rotation actually moves
+    // it somewhere.
+    private KaiPoint? ChooseLurkPost(CCSPlayerController player, int site)
+    {
+        var shortlist = LurkShortlistFor(site);
+
+        if (shortlist.Count == 0)
+        {
+            return null;
+        }
+
+        // Positions a team mate is already lurking are out.
+        var taken = new List<KaiPoint>();
+
+        foreach (var kv in _ctAnchorPost)
+        {
+            if (kv.Key != player.Slot)
+            {
+                taken.Add(kv.Value);
+            }
+        }
+
+        _ctAnchorPost.TryGetValue(player.Slot, out var current);
+
+        var options = new List<KaiLurkSpot>();
+
+        foreach (var spot in shortlist)
+        {
+            if (current != null && spot.Position.DistanceXY(current.X, current.Y) < 120.0f)
+            {
+                // Where it already is. Rotating to the same place is not
+                // rotating, and that was exactly the observed failure.
+                continue;
+            }
+
+            if (!KaiFormation.FarEnoughFrom(spot.Position, taken, KaiFormation.MinBotSpacing))
+            {
+                continue;
+            }
+
+            options.Add(spot);
+        }
+
+        if (options.Count == 0)
+        {
+            options = shortlist;
+        }
+
+        // Drawn at random rather than taking the best. The shortlist is
+        // already filtered to good positions, and predictability is the one
+        // thing a lurk cannot afford: the best spot chosen every round is the
+        // spot the human clears first every round.
+        var chosen = options[_routeRandom.Next(options.Count)];
+
+        KaiLog.Event(nameof(ChooseLurkPost),
+            $"slot {player.Slot} lurks " +
+            (site == KaiFlankZone ? "the deep flank" : $"site {site}") +
+            $" at ({chosen.Position.X:F0},{chosen.Position.Y:F0},{chosen.Position.Z:F0}), " +
+            $"drawn from {options.Count} of {shortlist.Count} shortlisted. It overlooks " +
+            $"{chosen.Overlooks} busy spot(s), sits {chosen.Height:F0} above them, has " +
+            $"{chosen.Traffic} visit(s) of its own traffic, a wall {chosen.BackWall:F0} " +
+            $"behind and {chosen.OpenSides} of 8 sides open. Score {chosen.Score:F1}.");
+
+        return chosen.Position;
+    }
+
+    // The shortlist for a zone, solved on first use and cached for the map.
+    private List<KaiLurkSpot> LurkShortlistFor(int site)
+    {
+        if (_lurkShortlist.TryGetValue(site, out var cached))
+        {
+            return cached;
+        }
+
+        var built = BuildLurkShortlist(site);
+        _lurkShortlist[site] = built;
+
+        return built;
+    }
+
+    // Search a zone of the map for the best places to hide.
+    private List<KaiLurkSpot> BuildLurkShortlist(int site)
+    {
+        var result = new List<KaiLurkSpot>();
+
+        if (_map == null || !_crumbs.IsUsable)
+        {
+            return result;
+        }
+
+        // Where is this zone, and how big is it?
+        KaiPoint centre;
+        float radius;
+        float innerLimit = 0.0f;
+
+        if (site == KaiFlankZone)
+        {
+            if (!_spawns.TryGetValue("t", out var tSpawn))
+            {
+                return result;
+            }
+
+            centre = tSpawn;
+            radius = _ctFlankRadius;
+            innerLimit = _ctFlankMinDistance;
+        }
+        else
+        {
+            if (site < 0 || site >= _map.PlantSites.Count)
+            {
+                return result;
+            }
+
+            centre = _map.PlantSites[site];
+            radius = _ctAnchorSiteRadius;
+        }
+
+        var all = _crumbs.StandableNodesWithTraffic();
+
+        // Everything in the zone, and how busy the busiest of it is.
+        var inZone = new List<(KaiPoint Position, int Visits)>();
+        int busiest = 0;
+
+        foreach (var node in all)
+        {
+            float d = node.Position.DistanceXY(centre.X, centre.Y);
+
+            if (d > radius || d < innerLimit)
+            {
+                continue;
+            }
+
+            inZone.Add(node);
+
+            if (node.Visits > busiest)
+            {
+                busiest = node.Visits;
+            }
+        }
+
+        if (inZone.Count == 0)
+        {
+            KaiLog.Event(nameof(BuildLurkShortlist),
+                $"zone {site} has no breadcrumb nodes within {radius:F0} units of " +
+                $"({centre.X:F0},{centre.Y:F0}), so there is nowhere to lurk",
+                KaiLogLevel.Error);
+
+            return result;
+        }
+
+        // Traffic is what a lurk watches. The threshold is relative to the
+        // busiest node in this zone, so a quiet corner of the map still has a
+        // "busy" to point at.
+        int trafficThreshold = (int)MathF.Max(2.0f, busiest * _lurkTrafficFraction);
+
+        var traffic = new List<KaiPoint>();
+        var candidates = new List<(KaiPoint Position, int Visits)>();
+
+        foreach (var node in inZone)
+        {
+            if (node.Visits >= trafficThreshold)
+            {
+                traffic.Add(node.Position);
+            }
+            else
+            {
+                // Quiet ground is where a lurk goes. Busy ground is what it
+                // watches, and standing in it defeats the whole purpose.
+                candidates.Add(node);
+            }
+        }
+
+        if (traffic.Count == 0 || candidates.Count == 0)
+        {
+            KaiLog.Event(nameof(BuildLurkShortlist),
+                $"zone {site} split into {traffic.Count} busy and {candidates.Count} quiet " +
+                $"node(s), which is not enough of both to place a lurk",
+                KaiLogLevel.Error);
+
+            return result;
+        }
+
+        // Quietest first, then trimmed to the trace budget, so the budget is
+        // spent on the most promising ground rather than an arbitrary slice.
+        candidates.Sort((a, b) => a.Visits.CompareTo(b.Visits));
+
+        if (candidates.Count > _lurkMaxCandidates)
+        {
+            candidates = candidates.GetRange(0, _lurkMaxCandidates);
+        }
+
+        // Sample the traffic to trace against, spread through the list rather
+        // than taken from one end of it.
+        var trafficSample = new List<KaiPoint>();
+        int stride = Math.Max(1, traffic.Count / _lurkTrafficSamples);
+
+        for (int i = 0;
+             i < traffic.Count && trafficSample.Count < _lurkTrafficSamples;
+             i += stride)
+        {
+            trafficSample.Add(traffic[i]);
+        }
+
+        int traces = 0;
+        var scored = new List<KaiLurkSpot>();
+
+        foreach (var candidate in candidates)
+        {
+            var eye = new Vector(
+                candidate.Position.X,
+                candidate.Position.Y,
+                candidate.Position.Z + KaiHeights.Head);
+
+            // How much of the traffic can it see, and how far above it does it
+            // sit?
+            int overlooks = 0;
+            float heightSum = 0.0f;
+
+            foreach (var busy in trafficSample)
+            {
+                float d = busy.DistanceXY(candidate.Position.X, candidate.Position.Y);
+
+                if (d < _lurkOverlookMin || d > _lurkOverlookMax)
+                {
+                    continue;
+                }
+
+                var target = new Vector(busy.X, busy.Y, busy.Z + KaiHeights.Chest);
+
+                traces++;
+
+                if (KaiRayTraceBridge.CanSee(eye, target))
+                {
+                    overlooks++;
+                    heightSum += candidate.Position.Z - busy.Z;
+                }
+            }
+
+            if (overlooks == 0)
+            {
+                // Sees none of the traffic. That is not a hiding place, it is
+                // an empty room.
+                continue;
+            }
+
+            float height = heightSum / overlooks;
+
+            // How many ways in are there? Eight rays at head height. The ones
+            // that hit a wall quickly are sides nobody can approach from. A
+            // corner has few open sides; an island in the open has eight.
+            int openSides = 0;
+            float bestWall = 300.0f;
+
+            for (int i = 0; i < 8; i++)
+            {
+                float bearing = i * 45.0f;
+                float radians = bearing * MathF.PI / 180.0f;
+
+                var probe = new Vector(
+                    candidate.Position.X + (MathF.Cos(radians) * 250.0f),
+                    candidate.Position.Y + (MathF.Sin(radians) * 250.0f),
+                    candidate.Position.Z + KaiHeights.Head);
+
+                traces++;
+
+                float open = KaiRayTraceBridge.TraceFraction(eye, probe) * 250.0f;
+
+                if (open > 200.0f)
+                {
+                    openSides++;
+                }
+                else if (open < bestWall)
+                {
+                    bestWall = open;
+                }
+            }
+
+            float score = (overlooks * _lurkOverlookWeight)
+                          + (MathF.Max(0.0f, height) * _lurkHeightWeight)
+                          - (candidate.Visits * _lurkTrafficPenalty)
+                          - (openSides * _lurkExposurePenalty);
+
+            // A wall close behind is worth far more to a lurk than to an
+            // ordinary holding position: it converts a spot that can be
+            // flanked into one that cannot.
+            if (bestWall < 120.0f)
+            {
+                score += _lurkCoverWeight * (1.0f - (bestWall / 120.0f));
+            }
+
+            scored.Add(new KaiLurkSpot
+            {
+                Position = candidate.Position,
+                Score = score,
+                Traffic = candidate.Visits,
+                Overlooks = overlooks,
+                Height = height,
+                BackWall = bestWall,
+                OpenSides = openSides,
+            });
+        }
+
+        // Best first, then anything far enough from what is already kept, so
+        // the shortlist is several different places rather than one place and
+        // its immediate neighbours.
+        scored.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+        var kept = new List<KaiPoint>();
+
+        foreach (var spot in scored)
+        {
+            if (result.Count >= _lurkKeepPerZone)
+            {
+                break;
+            }
+
+            if (!KaiFormation.FarEnoughFrom(spot.Position, kept, _lurkSpacing))
+            {
+                continue;
+            }
+
+            result.Add(spot);
+            kept.Add(spot.Position);
+        }
+
+        KaiLog.Event(nameof(BuildLurkShortlist),
+            $"zone {site}: {inZone.Count} node(s) in range, {traffic.Count} busy " +
+            $"(threshold {trafficThreshold} visits against a busiest of {busiest}), " +
+            $"{candidates.Count} quiet candidate(s) scored with {traces} trace(s). " +
+            $"Kept {result.Count} spot(s) at least {_lurkSpacing:F0} apart: " +
+            string.Join(", ", result.ConvertAll(
+                x => $"({x.Position.X:F0},{x.Position.Y:F0}) score {x.Score:F0}")));
+
+        return result;
+    }
     private void RefreshCtZones(float now)
     {
         if (now < _nextZoneRefresh)

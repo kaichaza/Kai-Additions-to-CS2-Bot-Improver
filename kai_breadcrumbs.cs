@@ -1337,6 +1337,33 @@ public sealed class KaiBreadcrumbs
 
     // Every recorded standing position, for solvers that need to consider all
     // of them rather than just the nearest.
+    // Every standable node with its traffic count.
+    //
+    // Added for the lurk finder, which needs to know not just WHERE a bot can
+    // stand but how many bots have stood there. Traffic is the whole basis of
+    // choosing a hiding place: somewhere nobody walks is somewhere nobody
+    // clears, and somewhere everybody walks is what a hiding place should be
+    // looking at.
+    //
+    // Returned as a parallel list rather than exposing the node type, so the
+    // internal representation stays private.
+    public List<(KaiPoint Position, int Visits)> StandableNodesWithTraffic()
+    {
+        var result = new List<(KaiPoint, int)>();
+
+        foreach (var node in _nodes.Values)
+        {
+            if (!node.Ground)
+            {
+                continue;
+            }
+
+            result.Add((new KaiPoint(node.X, node.Y, node.Z), node.Visits));
+        }
+
+        return result;
+    }
+
     public List<KaiPoint> StandableNodes()
     {
         var result = new List<KaiPoint>();
