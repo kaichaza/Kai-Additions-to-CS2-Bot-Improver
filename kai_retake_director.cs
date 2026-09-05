@@ -358,6 +358,16 @@ public sealed class KaiRetakeDirector
 
     public KaiRetakePhase Phase { get; private set; } = KaiRetakePhase.Idle;
 
+    // Who currently owns the defuse, for the per-tick chain to yield to.
+    // -1 outside an active retake. Exposed because the route follower and
+    // contact support both proved capable of claiming the defuser after the
+    // Commit release handed it to native, and they need to know whose wheel
+    // not to touch.
+    public int DefuserSlot
+    {
+        get { return _defuserSlot; }
+    }
+
     private float _plantTime;
     private int _defuserSlot = -1;
     private bool _defuserHasKit;
@@ -2180,8 +2190,24 @@ public sealed class KaiRetakeDirector
         // Deliberately no commitment pin here, unlike the team Commit. A lone
         // defuser has nobody to trade for it, so breaking off to fight is a
         // legitimate choice and the native AI is left free to make it.
+        //
+        // Released still means scrubbed, same rule as the team Commit: the
+        // per-tick chain runs before this director, so anything upstream that
+        // wrote movement or aim this tick would otherwise keep the wheel: a
+        // stale route steered the released team defuser off the bomb, and a
+        // lone defuser is exposed to exactly the same theft.
+        intent.SteerTowards = null;
+        intent.Anchored = false;
+        intent.Watch = null;
+        intent.ForceAim = false;
+        intent.SuppressUse = false;
+        intent.Walk = false;
+        intent.Erratic = false;
+        intent.SourceName = "defuse:native";
+
         KaiLog.Throttled($"solodefuse:{bot.Slot}", nameof(SoloDefuse),
-            $"slot {bot.Slot} released to the native defuse logic from {range:F0} units", 3.0f);
+            $"slot {bot.Slot} released to the native defuse logic from {range:F0} units, " +
+            $"upstream overrides scrubbed", 3.0f);
 
         return true;
     }
@@ -2280,13 +2306,36 @@ public sealed class KaiRetakeDirector
             //
             // The native defuse logic already knows how to approach the bomb,
             // face it and hold USE. It was never the problem. The problem was
-            // this plugin fighting it. So Commit now writes nothing at all,
-            // and with pre-aim excluded from CTs post-plant there is nothing
-            // else left holding the wheel.
+            // this plugin fighting it.
+            //
+            // The third wrong version was "Commit writes nothing at all", on
+            // the belief that with pre-aim excluded post-plant nothing else
+            // was left holding the wheel. Something was: the per-tick chain
+            // runs BEFORE this director, and a rotation route that survived
+            // the plant kept writing SteerTowards for the released defuser
+            // every tick, walking it AWAY from the bomb while this branch
+            // logged that native had it (mirage session, 2026-09-05: bomb ran
+            // 20s down to 16s with beingDefused=False and the defuser mid-map
+            // on 'rotate_s1_s0_04'). This director runs last precisely so it
+            // can have the final word, so released now means SCRUBBED: every
+            // movement and aim override written upstream this tick is erased,
+            // and the native defuse logic truly is the only thing driving.
+            var release = intentFor(bot.Slot);
+
+            release.SteerTowards = null;
+            release.Anchored = false;
+            release.Watch = null;
+            release.ForceAim = false;
+            release.SuppressUse = false;
+            release.Walk = false;
+            release.Erratic = false;
+            release.SourceName = "defuse:native";
+
             KaiLog.Throttled(
                 $"commit:{bot.Slot}",
                 nameof(DriveDefuser),
-                $"slot {bot.Slot} released to the native defuse logic, no overrides written",
+                $"slot {bot.Slot} released to the native defuse logic, upstream " +
+                $"overrides scrubbed",
                 3.0f);
 
             return;

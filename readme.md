@@ -2,15 +2,15 @@
 
 This project is an extension of ed0ard's CS2 Bot Improver:
 **[CS2-Bot-Improver](https://github.com/ed0ard/CS2-Bot-Improver)** by ed0ard,
-and it need's ed0ard's bot improver to be installed since it plugs directly into his library. Provided there are no majore breakinbg changes to ed0ard's project. This source shouldn't need recompiling each time CS2 releases a new update. But having said that I can't guarantee it won't break if I haven't played CS2 vs bots in a few weeks on my machine.
+and it needs ed0ard's bot improver to be installed since it plugs directly into his library. Provided there are no major breaking changes to ed0ard's project. This source shouldn't need recompiling each time CS2 releases a new update. But having said that I can't guarantee it won't break if I haven't played CS2 vs bots in a few weeks on my machine.
 
 Kai Chaza, 4th September 2026, Sweden.
 
- I used Claude Code to create parts of this documentation, and I used Claude code throughought my debugging sessions.
+ I used Claude Code to create parts of this documentation, and I used Claude Code throughout my debugging sessions.
 
- Most of the code is my own but I got stuck on a lot of algorithms that weren't working so I used Claude code to correct them when they were breaking unfixably. Like when the bots would just run straight into walls or get stuck trying to run off the map.
+ Most of the code is my own but I got stuck on a lot of algorithms that weren't working so I used Claude Code to correct them when they were breaking unfixably. Like when the bots would just run straight into walls or get stuck trying to run off the map.
 
-The plugin depends on the two below being installed in the steam library, but ed0ard's plugin loads these anyway.
+The plugin depends on the two below being installed in the Steam library, but ed0ard's plugin loads these anyway.
 
 **[CounterStrikeSharp](https://github.com/roflmuffin/CounterStrikeSharp)** by
 roflmuffin and contributors, the C# framework it is written in; and
@@ -44,7 +44,7 @@ per-tick behaviour chain, every measured failure and its fix — lives in
 
 ## Areas I tried to improve after playing the ed0ard CS2 Bot Improver, and what I changed
 
-The stock bots were losing a lot of rounds for what I felt were really tactical and strat reasons, not so much bad aim. In fact, I actually play the aim on low, basicaly easy bots, because at higher levels it was really just inhuman reaction time winning every battle against me. These are
+The stock bots were losing a lot of rounds for what I felt were really tactical and strat reasons, not so much bad aim. In fact, I actually play the aim on low, basically easy bots, because at higher levels it was really just inhuman reaction time winning every battle against me. These are
 the key repairs, each described fully in the accompanying architecture document:
 
 **They did not know the map.** Navigation-mesh data is unreachable from a
@@ -89,7 +89,7 @@ Each team of bots uses a playbook to gain map control and to gather info: fast e
 
 ### 2. Audibles for mid-round plan changes
 
-Each team has an In game leader, who calls the plays as the round progresses, and the plays are visible in the team chat in green text. This adapts to incoming information about the round, and is compared to the original strategy determined for the round. The in game leader calls an audible when the plan diverges from what was planned, or when the team is down unexpectedly: a site turns out to be stacked, the bomb ends up somewhere unexpected, the side goes down bodies. Site switches, rotations (including deliberate fake rotations), pull-backs, and the guard call when the bomb is loose on the ground. 
+Each team has an in-game leader, who calls the plays as the round progresses, and the plays are visible in the team chat in green text. This adapts to incoming information about the round, and is compared to the original strategy determined for the round. The in-game leader calls an audible when the plan diverges from what was planned, or when the team is down unexpectedly: a site turns out to be stacked, the bomb ends up somewhere unexpected, the side goes down bodies. Site switches, rotations (including deliberate fake rotations), pull-backs, and the guard call when the bomb is loose on the ground. 
 
 ### 3. Coordinated executes
 
@@ -101,7 +101,7 @@ When the bomb has been planted, the CT side runs a retake plan: **rally** (gathe
 
 ### 5. Fake defusing
 
-During the bait phase, the defuser walks to the bomb and will occassionally tap the defuse to fake out the Ts — a genuine begin-and-abort that produces the real defuse sound — to draw a hidden lurker out of the one corner the sweep could not see into.
+During the bait phase, the defuser walks to the bomb and will occasionally tap the defuse to fake out the Ts — a genuine begin-and-abort that produces the real defuse sound — to draw a hidden lurker out of the one corner the sweep could not see into.
 
 ### 6. Clearing angles and lurk-spot sweeps
 
@@ -121,11 +121,11 @@ Every recorded death is a measurement: who could see whom, from where. The bots 
 
 ### 10. Weapon awareness and picking up guns
 
-The plugin also addresses empty guns be having every bot who sees a gun on the floor actually remember where it was last seen, allowing team mates to go back there to pick it up. A bot that runs out of bullets can go and resupply from the floor, and a weapon seen by anybody is remembered by everybody — "there is an AK on the ground at Mid Doors" is a real callout that stays true after the spotter has moved on or died.
+The plugin also addresses empty guns by having every bot who sees a gun on the floor actually remember where it was last seen, allowing team mates to go back there to pick it up. A bot that runs out of bullets can go and resupply from the floor, and a weapon seen by anybody is remembered by everybody — "there is an AK on the ground at Mid Doors" is a real callout that stays true after the spotter has moved on or died.
 
 ### 11. Knifing when out of ammo
 
-A dry bot caught in a fight draws the knife and commits to it — moving erratically at close range. If the rush lands, the bot takes the gun off whoever it killed. If not it at least served as a stall.
+A dry bot caught in a fight draws the knife and commits to it — moving erratically at close range. If the rush lands, the bot takes the gun off whoever it killed. If not, it at least served as a stall.
 
 ### 12. Bot team comms and callouts
 
@@ -133,7 +133,7 @@ The bots use fixed radio names — Wei, Bullseye, Tank and Private, and they mak
 
 ### 13. A fair answer to the human problem
 
-A human can find the one angle bots handle badly and farm it forever. The answer here is deliberately a knowledge handicap, not an aim handicap: after a 30 second delay, the bots learn where the human is, and they use it to improve their positioning and pre aiming — which site to defend, which doorway to watch, which angle to settle on. They don't have wall hacks, and they don't wall bang, they just have a sense of the ping of where the human player is playing from and they can pre-aim that angle. Every duel is still fought by the native AI on even terms. It should still feels like playing against a team that reads the game.
+A human can find the one angle bots handle badly and farm it forever. The answer here is deliberately a knowledge handicap, not an aim handicap: after a 30 second delay, the bots learn where the human is, and they use it to improve their positioning and pre-aiming — which site to defend, which doorway to watch, which angle to settle on. They don't have wall hacks, and they don't wall bang, they just have a sense of the ping of where the human player is playing from and they can pre-aim that angle. Every duel is still fought by the native AI on even terms. It should still feel like playing against a team that reads the game.
 
 ### 14. Everything is observable and tunable
 

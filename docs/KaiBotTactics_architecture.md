@@ -2101,19 +2101,8 @@ Every write goes through a loader that takes a backup first.
 
 ## 19. Bibliography and a note on sources
 
-### A correction worth making before publication
 
-The standard algorithms textbook usually referred to as "Introduction to
-Algorithms" is by **Cormen, Leiserson, Rivest and Stein** — universally
-abbreviated CLRS after the authors' initials. It is not by anyone named Clemons,
-and it is worth getting right in a published document, because CLRS is a
-well-known enough abbreviation that the wrong name would be noticed immediately.
-The 3rd edition (2009) is the one most often cited; a 4th edition appeared in
-2022.
-
-Everything else below is confirmed and safe to cite as written.
-
-### Works genuinely relevant to what was built
+### Relevant texts
 
 **Graph representation, traversal, and shortest paths**
 

@@ -7587,6 +7587,32 @@ public class KaiBotTacticsPlugin : BasePlugin
             leg = 0;
         }
 
+        // The defuse outranks the route. A pre-plant rotation route that
+        // survives into the retake will steer the released defuser off the
+        // bomb, because this chain runs before the retake director and the
+        // Commit release hands the bot to native with nothing overwriting
+        // what is written here (mirage session, 2026-09-05: the defuser
+        // walked 'rotate_s1_s0_04' away from the bomb through the whole
+        // Commit window while the log said native had it). Dropping the
+        // route, rather than skipping it, means this fires once, the route
+        // state stops advancing invisibly, and a promoted replacement
+        // defuser sheds its own route on the next tick because the check is
+        // against whoever holds the job now.
+        if (_bombPlanted
+            && _retake.Phase != KaiRetakePhase.Idle
+            && player.Slot == _retake.DefuserSlot)
+        {
+            _routeOf.Remove(player.Slot);
+            _routeLeg.Remove(player.Slot);
+            _routeReversing.Remove(player.Slot);
+
+            KaiLog.Event(nameof(ApplyRoute),
+                $"slot {player.Slot} is the retake defuser, dropping route " +
+                $"'{route.Name}' at leg {leg}. The objective outranks the rotation.");
+
+            return false;
+        }
+
         bool reversing = _routeReversing.GetValueOrDefault(player.Slot);
 
         if (leg < 0 || leg >= route.Waypoints.Count)
@@ -8439,6 +8465,26 @@ public class KaiBotTacticsPlugin : BasePlugin
     {
         if (!_supportFire || _contacts.Count == 0)
         {
+            return false;
+        }
+
+        // The defuse outranks a team mate's fight, mirroring the plant
+        // commitment rule at the top of the chain: nothing this plugin does
+        // is worth more than the bomb coming back up. Without this check, a
+        // promoted replacement defuser was claimed by support every tick
+        // while the human stayed visible, which marked it as supporting, and
+        // the retake director deliberately skips supporting bots, so nobody
+        // ever drove it to the bomb and the watchdog gave up (mirage
+        // session, 2026-09-05, the 15:05 plant). The defuser's answer to a
+        // team mate's fight is the defuse.
+        if (_bombPlanted
+            && _retake.Phase != KaiRetakePhase.Idle
+            && player.Slot == _retake.DefuserSlot)
+        {
+            KaiLog.Throttled($"supportdefuser:{player.Slot}", nameof(ApplyContactSupport),
+                $"slot {player.Slot} is the retake defuser and does not swing onto " +
+                $"team mates' fights", 3.0f);
+
             return false;
         }
 
