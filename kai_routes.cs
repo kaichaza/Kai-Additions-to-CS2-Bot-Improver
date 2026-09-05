@@ -933,6 +933,17 @@ public sealed class KaiPathFollower
     // enough that standing still while turning is not mistaken for movement.
     public float StallImprovement = 32.0f;
 
+    // True while the game is holding every player still, set each tick by the
+    // plugin from the game rules' freeze period.
+    //
+    // The stall detector measures "not getting closer for StallSeconds" and a
+    // frozen bot cannot get closer to anything, so without this flag every
+    // path handed out at round start reported a stall exactly StallSeconds
+    // into freezetime, re-solved or abandoned nodes that were never the
+    // problem, and filled the log with failures that were really the game
+    // rules working as intended.
+    public bool MovementFrozen;
+
     // ------------------------------------------------------------------
     // Getting unstuck
     // ------------------------------------------------------------------
@@ -1298,6 +1309,19 @@ public sealed class KaiPathFollower
         float toNode,
         string label)
     {
+        // A frozen bot is not stalled, it is obeying the rules. Push the
+        // measurement forward so the stall clock starts counting from the
+        // moment movement is actually possible.
+        if (MovementFrozen)
+        {
+            leg.BestAt = now;
+
+            KaiLog.Throttled($"pathfrozen:{slot}", nameof(CheckProgress),
+                $"slot {slot} is in freezetime, stall clock for '{label}' held", 5.0f);
+
+            return;
+        }
+
         if (toNode < leg.BestDistance - StallImprovement)
         {
             leg.BestDistance = toNode;

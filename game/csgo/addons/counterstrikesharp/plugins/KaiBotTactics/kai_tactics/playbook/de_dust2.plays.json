@@ -1,0 +1,117 @@
+{
+  "mapName": "de_dust2",
+  "schemaVersion": 1,
+  "lastWrittenUtc": "2026-09-04 08:09:50Z",
+  "plays": [
+    {
+      "name": "t_exec_s0",
+      "team": 2,
+      "kind": 0,
+      "site": 0,
+      "called": 20,
+      "won": 5,
+      "abandoned": 35,
+      "lastCalledUtc": "2026-09-04 08:07:57Z"
+    },
+    {
+      "name": "t_split_s0",
+      "team": 2,
+      "kind": 1,
+      "site": 0,
+      "called": 21,
+      "won": 4,
+      "abandoned": 45,
+      "lastCalledUtc": "2026-09-04 07:57:47Z"
+    },
+    {
+      "name": "t_default_s0",
+      "team": 2,
+      "kind": 2,
+      "site": 0,
+      "called": 22,
+      "won": 3,
+      "abandoned": 61,
+      "lastCalledUtc": "2026-09-04 08:04:38Z"
+    },
+    {
+      "name": "ct_hold_s0",
+      "team": 3,
+      "kind": 3,
+      "site": 0,
+      "called": 24,
+      "won": 3,
+      "abandoned": 52,
+      "lastCalledUtc": "2026-09-04 08:07:57Z"
+    },
+    {
+      "name": "t_exec_s1",
+      "team": 2,
+      "kind": 0,
+      "site": 1,
+      "called": 19,
+      "won": 5,
+      "abandoned": 47,
+      "lastCalledUtc": "2026-09-04 08:05:59Z"
+    },
+    {
+      "name": "t_split_s1",
+      "team": 2,
+      "kind": 1,
+      "site": 1,
+      "called": 22,
+      "won": 3,
+      "abandoned": 67,
+      "lastCalledUtc": "2026-09-04 08:09:03Z"
+    },
+    {
+      "name": "t_default_s1",
+      "team": 2,
+      "kind": 2,
+      "site": 1,
+      "called": 20,
+      "won": 7,
+      "abandoned": 66,
+      "lastCalledUtc": "2026-09-04 07:58:45Z"
+    },
+    {
+      "name": "ct_hold_s1",
+      "team": 3,
+      "kind": 3,
+      "site": 1,
+      "called": 25,
+      "won": 3,
+      "abandoned": 67,
+      "lastCalledUtc": "2026-09-04 08:09:03Z"
+    },
+    {
+      "name": "ct_aggro",
+      "team": 3,
+      "kind": 4,
+      "site": -1,
+      "called": 25,
+      "won": 6,
+      "abandoned": 42,
+      "lastCalledUtc": "2026-09-04 08:05:59Z"
+    },
+    {
+      "name": "ct_hold_spread",
+      "team": 3,
+      "kind": 3,
+      "site": -1,
+      "called": 25,
+      "won": 3,
+      "abandoned": 17,
+      "lastCalledUtc": "2026-09-04 08:01:21Z"
+    },
+    {
+      "name": "ct_guard_bomb",
+      "team": 3,
+      "kind": 5,
+      "site": -1,
+      "called": 25,
+      "won": 6,
+      "abandoned": 25,
+      "lastCalledUtc": "2026-09-04 08:03:00Z"
+    }
+  ]
+}

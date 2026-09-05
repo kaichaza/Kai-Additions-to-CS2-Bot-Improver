@@ -469,7 +469,7 @@ engineering trade for something that runs during freezetime.
 
 ## 4. The breadcrumb navigation graph
 
-`kai_breadcrumbs.cs`, 1,420 lines.
+`kai_breadcrumbs.cs`, 1,447 lines.
 
 ### The core idea
 
@@ -583,11 +583,16 @@ Measured across four maps:
 | de_cache | 969 | 1,463 | 3.02 | 14.1% |
 
 Cache latched at 14% coverage while also being the physically largest of the
-four. Under the floor rule it will continue recording until it reaches
-approximately 2,000 nodes, at which point the ordinary quiet-round test resumes
-and the file settles. The round ceiling guarantees termination for a map that
-genuinely has less walkable ground than the floor assumes, and a hard maximum
-node count sits above both.
+four. The floor rule would have kept it recording toward approximately 2,000
+nodes, but the round ceiling got there first: recording terminated at 969 nodes
+and 1,463 edges, and the map has since matured at that size (198 rounds over 11
+matches, every play tried at least eight times). The graph has not grown since,
+and it will not — a matured map keeps using what it learned and stops adding to
+it. The practical consequence of settling sparse is that a route book generated
+over a thin graph carries the occasional waypoint the graph cannot actually
+path to, which is now handled at runtime rather than by re-recording: the stall
+check registers a proven-unreachable waypoint by position for the map session,
+and route fitting prunes it from every copy handed out afterwards (section 6).
 
 **Connectivity check.** All four graphs are effectively single connected
 components — Mirage and Dust2 exactly one, Inferno and Cache one plus a single
@@ -599,7 +604,7 @@ problems.
 
 ## 5. Routes: from graph to named paths
 
-`kai_routes.cs`, 1,734 lines. The file contains a route generator that runs once
+`kai_routes.cs`, 1,758 lines. The file contains a route generator that runs once
 and a route follower that runs every tick.
 
 ### Generation
@@ -746,6 +751,41 @@ not progressing is that its path was solved from a position it has since left.
 The second most likely is that the graph is wrong about a particular link.
 Trying the cheap and likely fix first, and the destructive one second, is a
 pattern that recurs throughout the codebase.
+
+### Freezetime is not a stall
+
+Both stall detectors — the route follower's and the plugin's — measure "not
+getting closer for N seconds", and a bot held motionless by the game's freeze
+period cannot get closer to anything. Executes are assigned at round start,
+during freezetime, so every bot on a fresh route tripped its stall detector
+exactly N seconds in: measured, all five bots on an execute logged "made no
+progress for 4.0s" simultaneously and spliced approach paths that were never
+needed, sometimes skipping a perfectly good first waypoint, at the start of
+every single round.
+
+The fix is a flag computed once per tick from the game rules (every rules read
+is a native call, so once, not per bot) and pushed into the path follower,
+which deliberately knows nothing about game state. While the flag is up, both
+detectors push their measurement clocks forward instead of measuring, so the
+stall clock starts counting from the moment movement is actually possible.
+After the gate: zero splices within eight seconds of any round start across
+forty-five measured rounds.
+
+### Dead waypoints are remembered
+
+When the stall check proves a waypoint unreachable — the graph offers no path
+to it from a bot standing nearby — the waypoint's rounded position is
+registered for the rest of the map session, and route fitting prunes every
+registered position from every route copy it hands out from then on (the final
+waypoint, the route's destination, is never pruned). The second bot handed the
+route never walks into the wall the first one found.
+
+Position-keyed rather than index-keyed, because fitting and splicing renumber
+the waypoints per bot. Runtime memory rather than editing the route books,
+because the books are per map, matured maps stop regenerating them, and a code
+answer carries to every map — including ones whose bad waypoints have not been
+discovered yet — while a data patch fixes exactly one file. The registry clears
+on map change, since the coordinates mean nothing anywhere else.
 
 ### The escape ladder
 
@@ -1110,15 +1150,97 @@ surrendered the only thing it was contributing.
 
 ## 9. The retake: how the CT side answers
 
-`kai_retake_director.cs`, 3,043 lines.
+`kai_retake_director.cs`, 4,028 lines.
 
-### Three phases
+### Four phases
 
 | Phase | Behaviour |
 |---|---|
-| Clear | one bot is designated defuser and held back; everyone else clears assigned lurk positions |
-| Inspect | the site is swept, with beats assigned so the sweep is partitioned rather than duplicated |
-| Defuse | the defuser commits; the others hold angles covering the bomb |
+| Rally | everyone converges on a ring short of the site, knives out on the long legs, and holds until enough of the side is set — then the whole retake enters on the same tick |
+| Inspect | the site is swept, with beats assigned so the sweep is partitioned rather than duplicated; the designated defuser stages with eyes on the bomb |
+| Bait | the defuser walks to the bomb and taps a fake defuse to draw a hidden lurker out; clearers hold their angles |
+| Commit | the defuser defuses; the others hold cover through the bar |
+
+The bomb clock outranks all of it: a defuse already running, spare time
+exhausted, or no Terrorists left alive each jump the machine straight to
+Commit from any phase, Rally included, so the choreography can never delay a
+forced defuse.
+
+### Rally: arriving together on defence
+
+The phase clocks originally started at the plant and every bot walked its own
+leg from wherever the round had left it, which made arrival order a function
+of walk distance. Measured over thirteen plants: assigned walks ranged from 97
+to 2,095 units against a twelve-second inspect window, in eight of the
+thirteen at least one assigned clearer never reached its spot before the round
+resolved, and the typical picture when the defuse began was the defuser plus
+zero or one clearer actually set — a queue of fair duels for the lurker,
+presented in arrival order. The single genuinely coordinated plant in that
+sample, three of four clearers set at the commit, was also the only one where
+the defuse bar ran twice.
+
+This is the same disease the Terrorist execute had (section 11), and the cure
+is the Counter-Terrorist flavour of the same medicine, with one constraint the
+T side does not have: the bomb clock is real, so the gather must live inside
+the spare-time arithmetic rather than beside it.
+
+At the plant, given at least two live CTs and spare time above a floor
+(roughly the inspect and bait budgets with margin), the machine opens in Rally
+instead of Inspect. Every CT — the defuser included, heading for its staging
+spot — is steered to a ring short of the site. On legs longer than a knife
+threshold the bot sprints with the knife drawn for the movement speed,
+borrowing the rotation sprint's rules wholesale: contact ends the knife
+immediately, the final stretch is always approached with the gun up, a dry
+bot's weapon state belongs to the arsenal and is never fought over, and
+restoration goes through the inventory-aware restore rather than a blind slot
+switch. On the ring the bot stops, gun out, facing the site.
+
+Release is the first of three triggers: enough of the side set on the ring
+(`ceil(alive * 0.66)` — everyone but one, for three to five alive, which is
+the intended tolerance for a straggler), a hard cap on the gather, or spare
+time reaching the floor. The release is a single phase flip, so every bot
+leaves the ring on the same tick, and the inspect clock starts at that moment
+rather than at the plant, so the sweep keeps its full window instead of losing
+it to the gather. Measured after the change: releases at five to seven seconds
+with three of four set.
+
+Arriving together is also what makes the focus fire work. Contact support
+already stacks every bot with line of sight onto the first fight; what it
+lacked was teammates present when the first fight started. A synchronised
+entry means the first Terrorist seen is looked at by several guns at once
+instead of meeting the side one bot at a time.
+
+### The ring around the defuse
+
+Authored clearing spots are assigned greedily, nearest bot first, and there
+are only a handful of them near any plant — so on most retakes at least one
+clearer has no authored spot at all. During Inspect that bot sweeps a beat
+like everyone else. From Bait onward it used to be left entirely stock, and
+stock is worse than nothing here: with USE suppressed (so covering bots never
+wander off to defuse), native post-plant logic walks a stock CT to the bomb to
+defuse it, the suppression blocks the actual defuse, and the bot simply stands
+on the bomb. Several spotless clearers produce a pile of CTs standing on the
+one thing that cannot hurt anybody, covering nothing, backs to everything.
+The assignment code carries a comment documenting this exact fault being fixed
+for the Inspect sweep; the fix had stopped one phase short.
+
+From Bait onward a spotless clearer is now given a computed ring post: a real
+recorded position — the same pool the scans use, lurk spots and learned duel
+angles, never free geometry that might sit inside a crate — in a donut around
+the bomb, selected to maximise bearing separation around the clock face from
+every position the defence already occupies, with a hard angular floor that
+only bends when the map physically cannot meet it and a linear spacing floor
+that never bends. The watch point faces outward, from the bomb through the
+post and beyond, because the threat arrives from outside the ring and the one
+direction guaranteed to hold nothing dangerous is inward. The fabricated post
+goes into the same assignment table as the authored ones, so from the next
+tick the bot is driven by the identical en-route, arrive, and cover machinery
+— one assignment path, two sources of spots.
+
+The authored spots gained the linear spacing test at assignment time as well:
+a candidate anchor within the spacing floor of one already assigned is
+skipped, because two bots in one pocket are one grenade, one spray, and one
+uncovered approach.
 
 ### Lurk spots and inspection beats
 
@@ -1159,11 +1281,36 @@ The second rule was added after observing the phase machine, which recomputes
 every tick, transition from Commit back to Bait twice in one session — calling
 off a running defuse to go and bluff again.
 
+**The stage give-up.** The defuser waits out the sweep on an authored staging
+spot with eyes on the bomb — when it can reach one. Some staging spots are
+simply unreachable from where the round put the defuser, and the same spot
+proved unreachable on every plant of a session on two different maps: the
+defuser spent the entire inspect window "enroute", skipping node after node,
+never anchored and never inspecting. A spot not reached by sixty percent of
+the window is now written off, the path is forgotten, and the plain bomb-watch
+standoff takes over — a worse position that actually exists. Measured from the
+inspect clock, not the plant, so a rally in front of the phase does not burn
+the give-up budget on the gather.
+
 ### The fake defuse
 
 Tapping the defuse produces the defuse sound and then stopping is a genuine
 technique: it draws a hidden Terrorist out of a corner the sweep could not see
 into.
+
+**The tap that never happened.** The Bait branch originally released the
+defuser on the assumption that native pathing would carry it to the bomb — the
+comment said so verbatim — and the logs proved it wrong: across two full
+sessions the fake defuser produced thirty-five "no tap yet" lines and not one
+actual tap, closing on the bomb at walking-wounded pace or not at all, because
+nothing native was taking it there. This is the third appearance of the same
+released-and-assumed fault (clearer approaches and the defuser's staging
+branch being the first two). The defuser is now actively steered to the bomb
+along the graph during Bait, with a direct fallback for the final stretch
+inside the follower's arrive radius, against the same tap-range constant the
+tap logic itself uses. The following session produced a tap on every bait
+phase that reached one — walk-ins of three hundred units in three seconds
+where the released version managed a hundred units in six.
 
 **One tap.** The bluff has either worked or failed after the first one; a second
 tap tells a lurker nothing the first did not, and simply spends bomb timer. The
@@ -1178,11 +1325,42 @@ Two subtleties in the implementation:
   schedules a repeat hold shortly after each release, which flips a live test
   back and lets the phase fall into Bait a second time.
 
+### Cover that follows the human
+
+Three retake-side consumers of the handicap's tracked position (section 10),
+all added after a session established that a human Terrorist defending their
+own plant could sit on a coordinate the contact list knew exactly and pick the
+cover off one by one.
+
+**Hold angles prefer the human's doorway.** A covering bot's angle is chosen
+far, distinct, and never the bomb; a candidate within the covering radius of
+the tracked human now outranks every merely-distant one, with the arc
+separation still applied — so the first clearer claims the human's doorway
+and the rest spread across the other approaches. One dedicated pair of eyes
+per known threat, not the whole rotation.
+
+**Held angles follow.** An angle once taken was sticky for the round, which
+is right in general and wrong when the one known threat has relocated: the
+held angle is dropped and reselected when the human moves outside its covering
+radius, rate-limited to a few seconds so the cover rotates on the human's
+moves, not their strafing.
+
+**Inside close range, the angle yields to the fact.** A pinned bot's view
+cone is wherever its assigned angle points, and native vision only acquires
+what falls inside the cone — with the human's exact position in hand, bots
+were still stared at for seconds before reacting, because their forced watch
+faced somewhere else and native eyes never got the chance. Within a close
+threat range the assigned angle is abandoned and the cone goes to the human's
+actual position, so the moment they peek they are already in view. The
+defuser is excluded, its eyes belong on the bomb.
+
+All three are attention only: the view cone moves, the trigger stays native.
+
 ### The watchdog
 
 ```
-if bomb_planted_for > WATCHDOG_SECONDS and no defuse has started:
-    log at ERROR level
+if no defuse has started within WATCHDOG_SECONDS of the clearing phases ending:
+    log at ERROR level, with the phase it tripped in
     drop all Counter-Terrorist overrides for the remainder of the round
 ```
 
@@ -1190,6 +1368,20 @@ This is an explicit admission of failure that hands the side back rather than
 leaving them stuck under a plan that is not working. Its firing rate is among
 the better health metrics for the whole system: it fell from 7 firings across
 19 planted rounds to 2 across 30 after the staging and phase fixes.
+
+Two later refinements. The message originally read "planted for N seconds",
+which was the threshold constant, not a measurement — the watchdog re-arms
+while the retake inspects and baits, so the bomb had often been down for twice
+that; it now reports what the timer actually knows, the seconds since arming
+and the phase at the trip. And the trips that remain have changed character:
+they now occur in Commit, after the choreography has completed cleanly —
+walk-in done, tap made, defuser released — because the released native AI
+declines to start a defuse while enemies are alive, or the defuser died
+mid-bar and the promoted replacement hunted instead. That is a shallower
+failure than the one the watchdog was built for, and it is the plugin's
+current known limitation on the CT side (section 17): during those trips the
+"overrides" being dropped are, mostly, nothing, since Commit deliberately
+writes none.
 
 ### Measured effect of the post-plant work
 
@@ -1205,6 +1397,15 @@ that native pathing would carry it to the staging position. It did not. Every
 hold-back log line read `stage:ctClear_020:enroute` and the bot never arrived,
 never anchored, never inspected, and was still wandering when the phase timer
 expired.
+
+A second measured round followed the walk-in, give-up, and rally work. Fake
+taps went from zero in thirty-five attempts across two sessions to one per
+bait phase; watchdog firings fell again and moved entirely into the
+post-release Commit signature described above; contested defuse bars ran to
+within three seconds and one second of completion where they previously never
+started; and rally releases measured five to seven seconds with three of four
+set, against a baseline where the typical commit had zero or one clearer in
+position.
 
 ---
 
@@ -1320,6 +1521,42 @@ Five bots watching a friendly and nobody watching the way in. There is now a
 single accessor that returns the tracked position only when the handicap is
 enabled, the position is current, and the asking bot is on the opposing side.
 
+### The window the handicap went dark in
+
+The scenario the handicap matters most is precisely the one it originally
+skipped: a human Terrorist defending their own plant. A human post-plant does
+the one thing the recorded data handles worst — finds a corner the sweep
+cannot reach, waits for the defuse sound, and takes the fight on their own
+terms — and it is repeatable every round. This is the improvisation problem
+from the top of this section at its sharpest, and it is exactly where the
+tracked position should have been earning its keep.
+
+It was not, for four separate reasons that only added up when read together.
+The pre-aim bias — the one mechanism that points a crosshair at the human's
+doorway — is hard-disabled for the whole CT side the moment the bomb is
+planted, a side effect of an earlier fix that stopped pre-aim writing
+horizontal watch targets over the defuser's need to look down at the bomb. A
+measurement comment in the glance-sweep code had already caught the
+consequence from the other side: the bias fired 69 times in 659 tracked
+seconds, none of it during a retake. Contact support deliberately ignores the
+synthetic contact (the lesson of the version that made the bots worse). Site
+attribution is moot once the bomb is down. And the retake director, which owns
+every CT from plant to round end, contained no reference to the tracked
+position at all — clearers held angles frozen at plant time while the contact
+list knew the human's exact coordinates, and the human reported standing in
+front of pinned bots "for quite some time" before they reacted, because a
+forced view cone facing elsewhere is a cone native vision never acquires
+through.
+
+The correction wires the retake director to the same single gated accessor as
+everything else and spends the knowledge in the same currency — attention,
+never aim: hold angles prefer and follow the human's doorway, and inside close
+range the assigned angle yields to the human's actual position (all three
+consumers are described from the retake's side in section 9). The line drawn
+in this section holds throughout: the bots watch the recorded angle nearest
+the human, or at close range the position itself, and the duel that follows is
+still fought entirely by the native AI.
+
 ### The result
 
 The bots' aim mechanics are untouched by all of this. Their reaction time, their
@@ -1334,7 +1571,7 @@ what these bots cannot work out for themselves.
 
 ### The playbook
 
-`kai_playbook.cs`, 815 lines. Eleven plays per map, generated to fit whatever
+`kai_playbook.cs`, 882 lines. Eleven plays per map, generated to fit whatever
 sites the map turns out to have:
 
 ```
@@ -1353,9 +1590,21 @@ watches how a round develops against what the play assumed and calls an audible
 when they diverge: contact on the wrong site, the bomb somewhere unexpected, the
 side down numbers.
 
+**Audibles latch.** The conditions behind most audibles persist once true —
+the bomb stays on the floor, the same site stays stacked, the side stays down
+bodies — so on a cooldown alone the same call re-fired every twelve seconds
+for as long as its condition held: fifteen GuardBomb calls and nineteen
+SwitchSite calls in single sessions, each repeat tearing down and re-issuing
+the same routes mid-walk. The last audible's kind and target site are now
+remembered per team, and a call that merely repeats the standing one is
+suppressed; a different call, or the same call to a different site, always
+goes through, a fake rotate and a real one count as the same decision, and the
+latch clears whenever a new play is called. After the change: zero to one
+repeats per session, with the suppressions logged.
+
 ### Command
 
-`kai_command.cs`, 425 lines.
+`kai_command.cs`, 505 lines.
 
 **Leaders.** One per side, always a bot, never the human, stable for the whole
 match rather than recomputed each round — a leader that changes every thirty
@@ -1380,21 +1629,37 @@ Peeling    decoys leave first; the main group may not commit yet
 Staging    main group gathers at STAGING_DISTANCE and waits
 Committed  everybody goes on the same tick
 
-ready  = main group members within STAGING_DISTANCE + TOLERANCE of the site
-enough = ready >= ceil(alive * READY_FRACTION)          # 0.7
-commit = enough or (elapsed >= MAX_STAGING_SECONDS)     # 12.0
+ready     = main group members within STAGING_DISTANCE + TOLERANCE of the site
+enough    = ready >= ceil(alive * READY_FRACTION)              # 0.7
+stragglers_out = first_arrival set and now - first_arrival >= MAX_STAGING   # 12.0
+approach_out   = nobody arrived and staging_elapsed >= MAX_APPROACH         # 45.0
+commit    = enough or stragglers_out or approach_out
 ```
 
+The straggler clock starts when the **first** bot arrives at the staging
+distance, not when the phase opens. The distinction is the whole feature, and
+it was learned the hard way: executes begin at round start, during freezetime,
+against routes five to ten thousand units long, and a clock started at the
+phase opening expired while the whole group was still mid-map — every commit
+across two full sessions, fifteen of fifteen, read "0 of N in position,
+staging timed out, going anyway", which is the trickle the module exists to
+prevent, wearing a synchronisation costume. Measured from first arrival the
+timer does what its name says: early arrivals hold, stragglers get their
+twelve seconds, and the group goes. The approach ceiling is the backstop for a
+group that never arrives at all, a wiped main group ends the execute cleanly
+rather than waiting out a timer, and an execute that begins with an empty
+roster — a map-boundary artefact — now stays idle instead of staging nobody
+for twelve seconds.
+
 The ready fraction is 0.7 rather than 1.0 because waiting for a straggler who is
-dead or stuck means never going at all. The timeout is the same insurance from
-the other direction. The decoys leaving first is deliberate: the noise should
-already be in the wrong place before the real hit begins.
+dead or stuck means never going at all. The decoys leaving first is deliberate:
+the noise should already be in the wrong place before the real hit begins.
 
 ---
 
 ## 12. Execution: the per-tick behaviour chain
 
-`kai_tactics_plugin.cs`, 10,771 lines. The main file, and the place where all
+`kai_tactics_plugin.cs`, 12,495 lines. The main file, and the place where all
 decisions are resolved into a single output object per bot per tick.
 
 ### The narrow waist
@@ -1434,7 +1699,7 @@ Evaluated per bot per tick, first match wins:
 9.  glance sweep
 ```
 
-**The ordering is load-bearing, and it is where the subtlest bugs live.** A
+**The ordering carries the whole design, and it is where the subtlest bugs live.** A
 layer returning true suppresses everything below it. Two of the three worst bugs
 found in playtesting were layers claiming bots they had no business claiming,
 and in both cases the symptom was not the layer misbehaving but the layers below
@@ -1527,6 +1792,11 @@ fit_route_to_bot(bot, route):
 The copy is essential. The stall check splices waypoints into whatever route a
 bot is running, and handing out the shared instance would edit the route book in
 memory for every bot that ever takes that route.
+
+Fitting is also where the dead-waypoint registry from section 6 is applied:
+every copy handed out has the session's proven-unreachable waypoints already
+pruned, destination excepted, so a route's known walls are hit at most once per
+map.
 
 ---
 
@@ -1706,6 +1976,43 @@ Described in full in section 10.
 Described in section 9. A live test where a latch was required, in a state
 machine that recomputes every tick.
 
+### The staging clock that started before anyone could arrive
+
+The Terrorist execute's synchronisation measured its readiness correctly and
+its time wrongly: the straggler timeout ran from the phase opening, at round
+start, during freezetime, against routes five to ten thousand units long.
+**Fifteen of fifteen commits across two sessions logged "0 of N in position,
+staging timed out, going anyway"** — a synchronisation feature whose every
+single activation was the trickle it existed to prevent. The clock now starts
+at the first arrival (section 11).
+
+### Freezetime read as a stall
+
+Every bot handed a route at round start tripped the stall detector exactly
+four seconds in, because a frozen bot makes no progress and the detector could
+not tell obedience from obstruction. Five simultaneous "made no progress"
+splices at the start of every execute, every round. Described in section 6;
+after the gate, zero splices within eight seconds of any round start.
+
+### The pile on the bomb
+
+From Bait onward, a retake clearer with no authored spot was left entirely
+stock — with USE suppressed so it could not defuse. Native post-plant logic
+walks a stock CT to the bomb to defuse; the suppression blocked the defuse;
+the bot stood on the bomb. Several such bots stood on it together, covering
+nothing, and the human reported standing in front of them uncontested. The
+assignment code already carried a comment fixing this exact fault for the
+Inspect phase; the fix had stopped one phase short. Described in section 9.
+
+### The fake defuse that never tapped
+
+The Bait branch released the defuser to native pathing to walk it to the bomb
+— the comment promised it would — and across two sessions the result was
+**thirty-five "no tap yet" lines and zero taps**. The third appearance of the
+released-and-assumed fault in this list, after the clearers and the staging
+branch. The lesson generalises: in this codebase, "native pathing will take it
+there" has been wrong every single time it has been written down.
+
 ---
 
 ## 17. Known limitations
@@ -1733,6 +2040,22 @@ route generator as a cost penalty, and the escape ladder can press jump as its
 last resort, but the path follower does not yet press it for a path link that
 requires one. A route needing a hop stalls there.
 
+**The commit handoff under fire.** Commit deliberately writes nothing for the
+defuser — the native defuse logic was never the problem — but the native AI
+declines to start a defuse while enemies are alive if hunting looks more
+attractive, and a promoted replacement after a mid-bar death routinely never
+touches the bomb. The remaining watchdog firings all carry this signature. The
+obvious fix, steering the released defuser onto the bomb and injecting USE the
+way the fake tap already does, would override that deliberate design decision
+and has not been taken.
+
+**Ring posts depend on recorded ground.** A computed ring post is only ever a
+recorded position, which is what keeps it out of crates — and also means a
+plant in a corner of the map with thin sample coverage can offer nothing in
+the donut that clears the spacing tests. The bot stays stock for that plant,
+with an error logged; more recorded rounds is the only real answer, and
+matured maps no longer record.
+
 **Difficulty remains bounded by the native duel.** Everything here decides where
 bots are and what they are looking at. Once a duel begins, the native AI takes
 over, and its aim is whatever the difficulty setting says. That is by design,
@@ -1744,21 +2067,21 @@ and the handicap in section 10 is the deliberate answer to it.
 
 | File | Lines | Role |
 |---|---|---|
-| `kai_tactics_plugin.cs` | 10,771 | Main plugin: hooks, per-tick behaviour chain, console commands, route following, pre-aim, contacts, zones, post-plant hold, overwatch, rotation sprint, handicap |
-| `kai_retake_director.cs` | 3,043 | Post-plant Counter-Terrorist plan: clear, inspect, defuse. Solo retake state machine. Fake defuse. Watchdog. |
-| `kai_routes.cs` | 1,734 | Route graph and A*, route generation, route book I/O, path follower and escape ladder |
-| `kai_breadcrumbs.cs` | 1,420 | Navigation graph recorded from bot movement: quantisation, edges, saturation, ring search |
+| `kai_tactics_plugin.cs` | 12,495 | Main plugin: hooks, per-tick behaviour chain, console commands, route following, pre-aim, contacts, zones, post-plant hold, overwatch, rotation sprint, handicap, dead-waypoint memory, defuse watchdog |
+| `kai_retake_director.cs` | 4,028 | Post-plant Counter-Terrorist plan: rally, inspect, bait, commit. Ring posts and tracked-threat cover. Solo retake state machine. Fake defuse with the walk-in. |
+| `kai_routes.cs` | 1,758 | Route graph and A*, route generation, route book I/O, freeze-aware path follower and escape ladder |
+| `kai_breadcrumbs.cs` | 1,447 | Navigation graph recorded from bot movement: quantisation, edges, saturation, ring search |
 | `kai_comms.cs` | 965 | Team chat: sticky squad identities, callout tables, verbosity tiers |
 | `kai_spot_learner.cs` | 964 | Deaths into hold spots and pre-aim angles: sample bank, clustering, emission |
-| `kai_playbook.cs` | 815 | Play definitions, bag-based selection, audibles, win and loss records |
+| `kai_playbook.cs` | 882 | Play definitions, bag-based selection, audibles with the repeat latch, win and loss records |
 | `kai_arsenal.cs` | 657 | Dry detection, shared dropped-weapon memory, knife rush, resupply, holding ranges |
 | `kai_tactics_data.cs` | 565 | Shared types and JSON loader |
 | `kai_maturity.cs` | 538 | Learning stages and stopping criteria, per map |
-| `kai_command.cs` | 425 | Leaders, bomb-carrier reading, synchronised execute phases |
+| `kai_command.cs` | 505 | Leaders, bomb-carrier reading, synchronised execute with first-arrival staging |
 | `kai_solver.cs` | 411 | Incremental scoring of every standable position against every known angle |
 | `kai_tactics_log.cs` | 406 | Levelled, throttled, file-backed logging |
 
-Total: approximately 22,700 lines.
+Total: approximately 25,600 lines.
 
 ### On-disk artefacts, per map
 
@@ -1768,7 +2091,7 @@ Total: approximately 22,700 lines.
 <map>_routes.json     generated routes with coverage counts
 <map>_plays.json      playbook records: called, won, abandoned
 <map>_maturity.json   learning stage and the reason it was reached
-<map>_bank.json       raw death samples
+<map>_samples.json    raw death samples and the engagement counter
 logs/<map>_<stamp>.log
 ```
 

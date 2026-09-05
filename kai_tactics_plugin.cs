@@ -822,6 +822,26 @@ public class KaiBotTacticsPlugin : BasePlugin
     private readonly Dictionary<int, float> _routeBestAt = new();
     private readonly Dictionary<int, int> _routeStalls = new();
 
+    // True while the game rules are holding everyone still. Computed once per
+    // tick from the game rules rather than per bot, because every rules read
+    // is a native call. Both stall detectors consult it: a frozen bot cannot
+    // make progress towards anything, and treating that as a stall was
+    // producing a burst of false path splices at the start of every execute.
+    private bool _movementFrozen;
+
+    // Waypoints the stall check has proven unreachable, keyed on rounded
+    // position so the memory survives route fitting and splicing, which both
+    // renumber the indices. Kept for the whole map session and consulted when
+    // a route is fitted to a bot, so the second bot handed a route with a
+    // known-dead waypoint never walks into the same wall the first one did.
+    //
+    // This is the code-side answer to bad data in the route books: the books
+    // are per map and mature maps stop regenerating them, so a waypoint the
+    // graph cannot reach stays wrong forever unless the runtime remembers.
+    // Cleared on map change, because the coordinates mean nothing anywhere
+    // else.
+    private readonly HashSet<(int X, int Y, int Z)> _deadWaypoints = new();
+
     // slot -> true if this bot is faking: it will turn round partway and go
     // back the way it came.
     private readonly Dictionary<int, bool> _routeFaking = new();
@@ -1543,6 +1563,10 @@ public class KaiBotTacticsPlugin : BasePlugin
         _routeBestAt.Clear();
         _routeStalls.Clear();
         _pathing?.Clear();
+
+        // Dead waypoints are coordinates on this map's route book. They mean
+        // nothing on the next map, so the registry starts empty there.
+        _deadWaypoints.Clear();
 
         // Lurk shortlists are solved against this map's breadcrumb graph, so
         // they belong to the map and not to the round.
@@ -2892,7 +2916,8 @@ public class KaiBotTacticsPlugin : BasePlugin
         //
         // Rearmed rather than paused, so the full window is available from the
         // moment the team actually intends to defuse.
-        if (_retake.Phase == KaiRetakePhase.Inspect
+        if (_retake.Phase == KaiRetakePhase.Rally
+            || _retake.Phase == KaiRetakePhase.Inspect
             || _retake.Phase == KaiRetakePhase.Bait)
         {
             _defuseWatchdogArmed = now;
@@ -2947,6 +2972,11 @@ public class KaiBotTacticsPlugin : BasePlugin
 
         _defuseWatchdogTripped = true;
 
+        // Captured before the reset below wipes them, so the log line can say
+        // what was actually true at the moment of the trip.
+        var phaseAtTrip = _retake.Phase;
+        float heldFor = now - _defuseWatchdogArmed;
+
         // Strip everything this plugin has told the CT side to do.
         foreach (var p in KaiPlayers.All())
         {
@@ -2971,11 +3001,17 @@ public class KaiBotTacticsPlugin : BasePlugin
         KaiComms.Call((int)CsTeam.CounterTerrorist, -1, "watchdog",
             "nobody is on the bomb, playing it straight from here", 20.0f);
 
+        // Worded from what is measured. The old line said "planted for 12s",
+        // but the watchdog re-arms while the retake inspects and baits, so
+        // the bomb had often been down for twice that. What this timer
+        // actually knows is how long the side has had nothing between it and
+        // the defuse, and that is what gets reported.
         KaiLog.Event(nameof(DriveDefuseWatchdog),
-            $"WATCHDOG: the bomb has been planted for {_defuseWatchdogSeconds:F0}s with " +
-            $"{ctsAlive} CT(s) alive and no defuse started. Something in this plugin is holding " +
-            $"them off the objective. All CT overrides are dropped for the rest of the round and " +
-            $"the native AI has the side back.",
+            $"WATCHDOG: {heldFor:F0}s in {phaseAtTrip} with {ctsAlive} CT(s) alive and no " +
+            $"defuse started (threshold {_defuseWatchdogSeconds:F0}s, armed after the retake's " +
+            $"clearing phases ended). Something in this plugin is holding them off the " +
+            $"objective. All CT overrides are dropped for the rest of the round and the native " +
+            $"AI has the side back.",
             KaiLogLevel.Error);
     }
 
@@ -3668,6 +3704,18 @@ public class KaiBotTacticsPlugin : BasePlugin
         // live round on its own.
         var rules = GameRules();
         bool roundLive = rules != null && !rules.WarmupPeriod && !rules.FreezePeriod;
+
+        // One read, shared by every stall detector this tick. The route
+        // follower's copy has to be pushed rather than read, because the
+        // follower lives in kai_routes.cs and deliberately knows nothing
+        // about the game rules.
+        _movementFrozen = rules != null && rules.FreezePeriod;
+
+        if (_pathing != null)
+        {
+            _pathing.MovementFrozen = _movementFrozen;
+        }
+
         // Map recording stops once the map is known. Everything else carries
         // on: the bots keep using what was learned, the files just stop
         // growing.
@@ -6692,7 +6740,8 @@ public class KaiBotTacticsPlugin : BasePlugin
             // splices waypoints into whatever route a bot is running, and
             // handing out the shared instance would edit the route book in
             // memory for every other bot that ever takes this route.
-            return CopyRoute(route, new List<KaiPoint>(route.Waypoints));
+            return CopyRoute(route,
+                PruneDeadWaypoints(new List<KaiPoint>(route.Waypoints), route.Name));
         }
 
         var here = new KaiPoint(origin.X, origin.Y, origin.Z);
@@ -6761,10 +6810,57 @@ public class KaiBotTacticsPlugin : BasePlugin
 
         if (waypoints.Count == 0)
         {
-            return CopyRoute(route, new List<KaiPoint>(route.Waypoints));
+            return CopyRoute(route,
+                PruneDeadWaypoints(new List<KaiPoint>(route.Waypoints), route.Name));
         }
 
-        return CopyRoute(route, waypoints);
+        return CopyRoute(route, PruneDeadWaypoints(waypoints, route.Name));
+    }
+
+    // Rounded position key for the dead waypoint registry. Rounded because
+    // the same book waypoint arrives here through different copies, and float
+    // identity is not a thing worth relying on across serialisation.
+    private static (int X, int Y, int Z) DeadWaypointKey(KaiPoint point)
+    {
+        return ((int)MathF.Round(point.X), (int)MathF.Round(point.Y), (int)MathF.Round(point.Z));
+    }
+
+    // Drop every waypoint the stall check has already proven unreachable,
+    // except the last one, which is the route's destination and worth
+    // steering at even if the final approach ends up direct.
+    private List<KaiPoint> PruneDeadWaypoints(List<KaiPoint> waypoints, string routeName)
+    {
+        if (_deadWaypoints.Count == 0 || waypoints.Count == 0)
+        {
+            return waypoints;
+        }
+
+        var kept = new List<KaiPoint>();
+        int pruned = 0;
+
+        for (int i = 0; i < waypoints.Count; i++)
+        {
+            bool isDestination = i == waypoints.Count - 1;
+
+            if (!isDestination && _deadWaypoints.Contains(DeadWaypointKey(waypoints[i])))
+            {
+                pruned++;
+                continue;
+            }
+
+            kept.Add(waypoints[i]);
+        }
+
+        if (pruned == 0)
+        {
+            return waypoints;
+        }
+
+        KaiLog.Event(nameof(PruneDeadWaypoints),
+            $"'{routeName}' handed out with {pruned} known-dead waypoint(s) pruned, " +
+            $"{kept.Count} remain");
+
+        return kept;
     }
 
     // A route with the same identity but its own waypoint list.
@@ -7237,6 +7333,20 @@ public class KaiBotTacticsPlugin : BasePlugin
         // the site, which is exactly the same problem, so it shares the
         // follower rather than keeping a second one with its own cache.
         _retake.Pathing = _pathing;
+
+        // And it gets the tracked human the same way everything else does:
+        // through TrackedTargetFor, which owns the handicap-on, freshness
+        // and enemy-team checks. This is what lets a covering clearer bias
+        // its held angle onto the human's doorway during a retake, which
+        // was the one window the handicap previously went dark in.
+        _retake.TrackedEnemy = TrackedTargetFor;
+
+        // The rally borrows the knife-sprint idea from the rotation sprint,
+        // so it needs the same two courtesies: never fight the arsenal over
+        // a dry bot's knife, and restore the BEST gun rather than blindly
+        // pressing slot1.
+        _retake.IsKnifing = _arsenal.IsKnifing;
+        _retake.RestoreWeapon = RestoreBestWeapon;
 
         KaiLog.Event(nameof(Pathing),
             "path follower created over the breadcrumb graph and handed to the retake director");
@@ -7737,6 +7847,22 @@ public class KaiBotTacticsPlugin : BasePlugin
         float now = Server.CurrentTime;
         int slot = player.Slot;
 
+        // Freezetime. The bot has not stalled, the game is holding it, and
+        // routes are handed out at round start so every bot used to hit this
+        // detector exactly four seconds into the freeze, splice a pointless
+        // approach path, and sometimes skip a perfectly good first waypoint.
+        // Pushing the clock forward means the measurement starts when the
+        // bot is actually free to move.
+        if (_movementFrozen)
+        {
+            _routeBestAt[slot] = now;
+
+            KaiLog.Throttled($"routefrozen:{slot}", nameof(StallCheck),
+                $"slot {slot} is in freezetime, stall clock for '{route.Name}' held", 5.0f);
+
+            return false;
+        }
+
         float best = _routeBest.GetValueOrDefault(slot, float.MaxValue);
 
         if (distance < best - _routeStallImprovement)
@@ -7802,6 +7928,22 @@ public class KaiBotTacticsPlugin : BasePlugin
                 $"{distance:F0} units from waypoint {leg + 1}, and no path to it exists. " +
                 $"Skipping the waypoint.",
                 KaiLogLevel.Error);
+
+            // A waypoint the graph cannot path to from a bot standing near it
+            // is one the route book is wrong about, and the book is not going
+            // to change. Remember it, so route fitting prunes it for every
+            // bot handed this route from now on instead of each of them
+            // rediscovering the same wall four seconds at a time.
+            var dead = route.Waypoints[leg];
+            var key = DeadWaypointKey(dead);
+
+            if (_deadWaypoints.Add(key))
+            {
+                KaiLog.Event(nameof(StallCheck),
+                    $"waypoint at ({dead.X:F0},{dead.Y:F0},{dead.Z:F0}) on '{route.Name}' " +
+                    $"registered as dead: {_deadWaypoints.Count} dead waypoint(s) known on " +
+                    $"this map, all pruned at route fitting from here on");
+            }
         }
 
         // Second stall or no path: skip the waypoint.

@@ -241,6 +241,17 @@ public sealed class KaiTacticalController
     private readonly Dictionary<int, float> _lastAudible = new();
     private readonly Dictionary<int, KaiAudibleKind> _lastAudibleKind = new();
 
+    // team -> the site the last audible pointed at, or -1 for the audibles
+    // that name no site. Together with the kind this is the latch that stops
+    // an audible whose condition PERSISTS from being called again every
+    // cooldown: two playtest sessions showed GuardBomb repeating fifteen
+    // times a session and SwitchSite nineteen, each repeat tearing down and
+    // re-issuing the same routes, because the condition that fired it (bomb
+    // still on the floor, same site still stacked) stayed true. The same
+    // call to the same place is not new information; a DIFFERENT call, or
+    // the same call to a different site, still goes through.
+    private readonly Dictionary<int, int> _lastAudibleSite = new();
+
     // team -> the plays not yet drawn from the current bag, and the last one
     // drawn, so a reshuffle cannot immediately repeat it.
     private readonly Dictionary<int, List<string>> _bag = new();
@@ -281,6 +292,7 @@ public sealed class KaiTacticalController
         _current.Clear();
         _lastAudible.Clear();
         _lastAudibleKind.Clear();
+        _lastAudibleSite.Clear();
         _bag.Clear();
         _lastCalled.Clear();
 
@@ -411,6 +423,7 @@ public sealed class KaiTacticalController
         _current[team] = chosen;
         _lastAudible[team] = 0.0f;
         _lastAudibleKind[team] = KaiAudibleKind.None;
+        _lastAudibleSite[team] = -1;
         _lastCalled[team] = chosen.Name;
 
         KaiLog.Event(nameof(CallPlay),
@@ -525,7 +538,7 @@ public sealed class KaiTacticalController
             && _lastAudibleKind.GetValueOrDefault(team) != KaiAudibleKind.BombRecovered)
         {
             why = "the bomb has been picked up, so guarding where it was is guarding nothing";
-            Note(team, KaiAudibleKind.BombRecovered, state);
+            Note(team, KaiAudibleKind.BombRecovered, state, -1);
             return KaiAudibleKind.BombRecovered;
         }
 
@@ -552,10 +565,11 @@ public sealed class KaiTacticalController
         if (remaining <= PullBackFraction
             && state.FriendliesAlive > 0
             && !state.BombPlanted
-            && team == (int)CsTeam.Terrorist)
+            && team == (int)CsTeam.Terrorist
+            && !RepeatsLast(team, KaiAudibleKind.PullBack, -1))
         {
             why = $"down to {state.FriendliesAlive} of {started}, the execute is not on";
-            Note(team, KaiAudibleKind.PullBack, state);
+            Note(team, KaiAudibleKind.PullBack, state, -1);
             return KaiAudibleKind.PullBack;
         }
 
@@ -563,11 +577,12 @@ public sealed class KaiTacticalController
         if (team == (int)CsTeam.Terrorist
             && play.Kind == KaiPlayKind.Default
             && !state.BombPlanted
-            && state.RoundElapsed > 55.0f)
+            && state.RoundElapsed > 55.0f
+            && !RepeatsLast(team, KaiAudibleKind.CommitNow, play.Site))
         {
             newSite = play.Site;
             why = $"{state.RoundElapsed:F0}s gone on a default, time to commit";
-            Note(team, KaiAudibleKind.CommitNow, state);
+            Note(team, KaiAudibleKind.CommitNow, state, play.Site);
             return KaiAudibleKind.CommitNow;
         }
 
@@ -579,10 +594,11 @@ public sealed class KaiTacticalController
         if (team == (int)CsTeam.CounterTerrorist
             && state.BombDropped
             && !state.BombPlanted
-            && play.Kind != KaiPlayKind.GuardBomb)
+            && play.Kind != KaiPlayKind.GuardBomb
+            && !RepeatsLast(team, KaiAudibleKind.GuardBomb, -1))
         {
             why = "the bomb is on the ground, which is the one thing the Ts must come back for";
-            Note(team, KaiAudibleKind.GuardBomb, state);
+            Note(team, KaiAudibleKind.GuardBomb, state, -1);
             return KaiAudibleKind.GuardBomb;
         }
 
@@ -618,20 +634,27 @@ public sealed class KaiTacticalController
                         }
                     }
 
-                    if (alternative >= 0)
+                    if (alternative >= 0
+                        && !RepeatsLast(team, KaiAudibleKind.SwitchSite, alternative))
                     {
                         newSite = alternative;
                         why = $"site {stacked} is stacked with {stackedCount} contact(s), " +
                               $"switching to site {alternative}";
-                        Note(team, KaiAudibleKind.SwitchSite, state);
+                        Note(team, KaiAudibleKind.SwitchSite, state, alternative);
                         return KaiAudibleKind.SwitchSite;
                     }
                 }
 
                 if (team == (int)CsTeam.CounterTerrorist && !state.BombPlanted)
                 {
-                    // They are somewhere other than where we are set up.
-                    if (play.Site >= 0 && play.Site != stacked)
+                    // They are somewhere other than where we are set up. The
+                    // repeat check treats a fake rotate and a real one as the
+                    // same call: either way the side has already been sent to
+                    // that site once, and sending it again on the same read
+                    // teaches nobody anything.
+                    if (play.Site >= 0
+                        && play.Site != stacked
+                        && !RepeatsLast(team, KaiAudibleKind.RotateDefence, stacked))
                     {
                         newSite = stacked;
 
@@ -643,11 +666,11 @@ public sealed class KaiTacticalController
                         if (fake)
                         {
                             why += ", rotating as a fake to pull them back";
-                            Note(team, KaiAudibleKind.FakeRotate, state);
+                            Note(team, KaiAudibleKind.FakeRotate, state, stacked);
                             return KaiAudibleKind.FakeRotate;
                         }
 
-                        Note(team, KaiAudibleKind.RotateDefence, state);
+                        Note(team, KaiAudibleKind.RotateDefence, state, stacked);
                         return KaiAudibleKind.RotateDefence;
                     }
                 }
@@ -657,7 +680,7 @@ public sealed class KaiTacticalController
         return KaiAudibleKind.None;
     }
 
-    private void Note(int team, KaiAudibleKind kind, KaiGameState state)
+    private void Note(int team, KaiAudibleKind kind, KaiGameState state, int site)
     {
         // Abandoning a dead play does not consume the cooldown. The cooldown
         // exists to stop the side thrashing between reads, and tearing down a
@@ -667,6 +690,7 @@ public sealed class KaiTacticalController
         if (kind == KaiAudibleKind.BombRecovered)
         {
             _lastAudibleKind[team] = kind;
+            _lastAudibleSite[team] = site;
 
             var voided = CurrentPlay(team);
 
@@ -680,6 +704,7 @@ public sealed class KaiTacticalController
 
         _lastAudible[team] = state.RoundElapsed;
         _lastAudibleKind[team] = kind;
+        _lastAudibleSite[team] = site;
 
         var play = CurrentPlay(team);
 
@@ -687,6 +712,48 @@ public sealed class KaiTacticalController
         {
             play.Abandoned++;
         }
+    }
+
+    // Would this call just repeat the one already standing?
+    //
+    // True when the last audible for this team was the same kind aimed at the
+    // same site. The conditions behind PullBack, GuardBomb, SwitchSite and
+    // the rotates all persist once true (still down bodies, bomb still on
+    // the floor, same site still stacked), so without this check they re-fire
+    // on every cooldown, and each re-fire tears down and re-issues the same
+    // routes mid-walk. The latch clears whenever a different audible lands or
+    // a new play is called, so a genuinely new read always gets through.
+    private bool RepeatsLast(int team, KaiAudibleKind kind, int site)
+    {
+        var last = NormaliseRotate(_lastAudibleKind.GetValueOrDefault(team, KaiAudibleKind.None));
+
+        if (last != NormaliseRotate(kind))
+        {
+            return false;
+        }
+
+        if (_lastAudibleSite.GetValueOrDefault(team, -1) != site)
+        {
+            return false;
+        }
+
+        KaiLog.Throttled($"audiblerepeat:{team}", nameof(RepeatsLast),
+            $"team {team} holding its {kind} call: same call to site {site} is already " +
+            $"standing", 15.0f);
+
+        return true;
+    }
+
+    // A fake rotate and a real one are the same decision as far as repetition
+    // goes: the side was sent towards that site either way.
+    private static KaiAudibleKind NormaliseRotate(KaiAudibleKind kind)
+    {
+        if (kind == KaiAudibleKind.FakeRotate)
+        {
+            return KaiAudibleKind.RotateDefence;
+        }
+
+        return kind;
     }
 
     // ------------------------------------------------------------------

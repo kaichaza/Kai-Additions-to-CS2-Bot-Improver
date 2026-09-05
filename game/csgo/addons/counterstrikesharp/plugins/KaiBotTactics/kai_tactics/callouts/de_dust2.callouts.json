@@ -1,0 +1,370 @@
+{
+  "mapName": "de_dust2",
+  "maxDistance": 750,
+  "anchors": [
+    {
+      "name": "Back Plat",
+      "x": -2004,
+      "y": 3094,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Goose",
+      "x": 1017,
+      "y": 3017,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Back Site",
+      "x": -1656,
+      "y": 2809,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Ninja",
+      "x": 561,
+      "y": 2781,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Barrels",
+      "x": 1336,
+      "y": 2767,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Scaffolding",
+      "x": -1075,
+      "y": 2673,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Window",
+      "x": -1325,
+      "y": 2661,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Plat",
+      "x": -1978,
+      "y": 2650,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Site",
+      "x": -1559,
+      "y": 2644,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Ramp",
+      "x": 1519,
+      "y": 2627,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Plat",
+      "x": 781,
+      "y": 2604,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Double Stack",
+      "x": -1679,
+      "y": 2593,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Site",
+      "x": 1108,
+      "y": 2482,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT Spawn",
+      "x": 257,
+      "y": 2415,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Big Box",
+      "x": -1824,
+      "y": 2370,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Elevator",
+      "x": 966,
+      "y": 2359,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Short Boost",
+      "x": 624,
+      "y": 2262,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT Mid",
+      "x": -610,
+      "y": 2245,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Short",
+      "x": 422,
+      "y": 2211,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Doors",
+      "x": -1317,
+      "y": 2205,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Fence",
+      "x": -2220,
+      "y": 2188,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Cross",
+      "x": 1411,
+      "y": 2160,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Car",
+      "x": 1687,
+      "y": 2054,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Boxes",
+      "x": -1080,
+      "y": 2051,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Car",
+      "x": -1613,
+      "y": 1869,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Close Mid Doors",
+      "x": -328,
+      "y": 1812,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Close",
+      "x": -2198,
+      "y": 1789,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Mid Doors",
+      "x": -402,
+      "y": 1692,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Stairs",
+      "x": 396,
+      "y": 1661,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Closet",
+      "x": -1596,
+      "y": 1561,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Long",
+      "x": 1388,
+      "y": 1476,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Lower Tunnels",
+      "x": -909,
+      "y": 1436,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Xbox",
+      "x": -336,
+      "y": 1416,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Long Corner",
+      "x": 1291,
+      "y": 1293,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Upper Tunnels",
+      "x": -1818,
+      "y": 1151,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Blue",
+      "x": 804,
+      "y": 1148,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Mid",
+      "x": -459,
+      "y": 1002,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Catwalk",
+      "x": -202,
+      "y": 946,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Palm",
+      "x": -294,
+      "y": 774,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Pit Plat",
+      "x": 1781,
+      "y": 621,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Long Doors",
+      "x": 618,
+      "y": 604,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Side Pit",
+      "x": 1071,
+      "y": 481,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Pit",
+      "x": 1436,
+      "y": 461,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Top Mid",
+      "x": -165,
+      "y": 395,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Right Side Mid",
+      "x": -713,
+      "y": 381,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Outside",
+      "x": -1693,
+      "y": 364,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Tunnels",
+      "x": -1696,
+      "y": 136,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Outside Long",
+      "x": 573,
+      "y": 136,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Suicide",
+      "x": -465,
+      "y": -177,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Ramp",
+      "x": -2095,
+      "y": -331,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Plat",
+      "x": -1365,
+      "y": -383,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Spawn",
+      "x": -741,
+      "y": -783,
+      "z": 0,
+      "hasHeight": false
+    }
+  ]
+}

@@ -1,0 +1,328 @@
+{
+  "mapName": "de_cache",
+  "maxDistance": 750,
+  "anchors": [
+    {
+      "name": "NBK",
+      "x": 41,
+      "y": 2254,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Squeaky",
+      "x": 604,
+      "y": 2201,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Shroud",
+      "x": 469,
+      "y": 2183,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Quad",
+      "x": -297,
+      "y": 2172,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Site",
+      "x": -219,
+      "y": 1773,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Default Box",
+      "x": -272,
+      "y": 1592,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Lockers",
+      "x": 975,
+      "y": 1485,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Main",
+      "x": 654,
+      "y": 1464,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Forklift",
+      "x": 141,
+      "y": 1460,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Elektro",
+      "x": -646,
+      "y": 1317,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Balcony",
+      "x": 169,
+      "y": 1268,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Truck",
+      "x": -903,
+      "y": 1036,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "A Long",
+      "x": 1260,
+      "y": 1029,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Highway",
+      "x": -212,
+      "y": 901,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Cubby",
+      "x": 511,
+      "y": 815,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT Spawn",
+      "x": -1470,
+      "y": 803,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Truck",
+      "x": 2300,
+      "y": 701,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Boost",
+      "x": 821,
+      "y": 651,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "White Box",
+      "x": -44,
+      "y": 473,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Mid",
+      "x": 429,
+      "y": 306,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Red",
+      "x": 1163,
+      "y": 302,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "CT Halls",
+      "x": -899,
+      "y": 231,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Connector",
+      "x": -443,
+      "y": 92,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Sand Bags",
+      "x": 91,
+      "y": 67,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Spawn",
+      "x": 3030,
+      "y": 51,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Garage",
+      "x": 1238,
+      "y": -15,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Roof",
+      "x": 301,
+      "y": -43,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Vents",
+      "x": 536,
+      "y": -186,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Dumpster",
+      "x": 1206,
+      "y": -325,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Checkers",
+      "x": 166,
+      "y": -343,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Heaven",
+      "x": -561,
+      "y": -535,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Rafters",
+      "x": -383,
+      "y": -549,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Boxes",
+      "x": 640,
+      "y": -553,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "T Boxes",
+      "x": 2043,
+      "y": -667,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Hell",
+      "x": -853,
+      "y": -724,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Main",
+      "x": 444,
+      "y": -781,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Tree",
+      "x": -999,
+      "y": -824,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Ramp",
+      "x": -59,
+      "y": -909,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Halls",
+      "x": 1014,
+      "y": -909,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Pit",
+      "x": 162,
+      "y": -1066,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "B Site",
+      "x": -51,
+      "y": -1251,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Toxic",
+      "x": 982,
+      "y": -1251,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Headshot",
+      "x": -301,
+      "y": -1258,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Sun Room",
+      "x": 885,
+      "y": -1315,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "New Boxes",
+      "x": 155,
+      "y": -1386,
+      "z": 0,
+      "hasHeight": false
+    },
+    {
+      "name": "Spray",
+      "x": 20,
+      "y": -1415,
+      "z": 0,
+      "hasHeight": false
+    }
+  ]
+}

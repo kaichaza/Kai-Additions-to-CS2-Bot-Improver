@@ -44,3 +44,5 @@ artifacts/
 packages/
 *.nupkg
 *.snupkg
+
+dev_tools/

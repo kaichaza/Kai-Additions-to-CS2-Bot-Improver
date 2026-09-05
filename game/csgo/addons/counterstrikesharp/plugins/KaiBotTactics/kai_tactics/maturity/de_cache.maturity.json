@@ -1,0 +1,14 @@
+{
+  "mapName": "de_cache",
+  "schemaVersion": 2,
+  "rounds": 198,
+  "matches": 11,
+  "stage": 2,
+  "firstSeenUtc": "2026-08-18 20:06:34Z",
+  "seededFromHistory": true,
+  "seededBecause": "no meaningful history to seed from",
+  "mappedUtc": "2026-08-18 23:22:56Z",
+  "mappedBecause": "150 rounds reached the ceiling of 150 with 142/150 post-plant and 236/150 clear samples",
+  "maturedUtc": "2026-08-19 00:34:33Z",
+  "maturedBecause": "198 rounds, all 11 plays tried at least 8 times (96 calls in total)"
+}

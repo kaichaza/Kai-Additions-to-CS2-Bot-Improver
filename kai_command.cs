@@ -79,8 +79,27 @@ public sealed class KaiCommand
     // going at all.
     public float ReadyFraction = 0.7f;
 
-    // Longest the group will wait for stragglers.
+    // Longest the group will wait for stragglers, measured from the moment
+    // the FIRST bot arrives at the staging distance, not from the start of
+    // the phase.
+    //
+    // The distinction is the whole feature. Executes begin at round start,
+    // during freezetime, and the routes to a site are five to ten thousand
+    // units long, so measured from phase start this timer expired while the
+    // whole group was still mid-map: every commit in two full playtest
+    // sessions read "0 of N in position after 12.0s (staging timed out)".
+    // Measured from first arrival it does what the name says: the early
+    // arrivals hold, the stragglers get this long to join them, and then
+    // the group goes.
     public float MaxStagingSeconds = 12.0f;
+
+    // Absolute ceiling on the whole approach, measured from the start of the
+    // staging phase. If NOBODY has arrived by this point the group is stuck,
+    // dead, or fighting its way in, and holding the phase open any longer
+    // just delays whatever the round has become. Generous on purpose: the
+    // longest recorded exec route is under ten thousand units, which a
+    // running bot covers well inside this.
+    public float MaxApproachSeconds = 45.0f;
 
     // How long the decoys get to be heard before the main group is allowed to
     // commit, so the fake lands first rather than at the same time.
@@ -98,6 +117,12 @@ public sealed class KaiCommand
     private float _phaseSince;
     private int _targetSite = -1;
     private readonly HashSet<int> _mainGroup = new();
+
+    // When the first main-group bot reached the staging distance, or a
+    // negative value while nobody has. The staging timeout counts from here,
+    // because a clock that starts before anyone can possibly have arrived is
+    // a clock that only ever times out.
+    private float _firstReadyAt = -1.0f;
 
     // Which site the human carrier appears to be committing to, and how
     // confident that read is.
@@ -298,10 +323,27 @@ public sealed class KaiCommand
     {
         _targetSite = site;
         _mainGroup.Clear();
+        _firstReadyAt = -1.0f;
 
         foreach (int slot in mainGroup)
         {
             _mainGroup.Add(slot);
+        }
+
+        // An execute with nobody in it is not an execute. This happens at map
+        // start and map end, when plays are called before any bot has spawned
+        // or after they have gone, and it used to open a staging phase that
+        // logged "0 of 0 in position" for twelve seconds and then committed
+        // nothing. Idle says what is true instead.
+        if (_mainGroup.Count == 0)
+        {
+            Phase = KaiExecutePhase.Idle;
+
+            KaiLog.Event(nameof(BeginExecute),
+                $"execute on site {site} has an empty main group, staying idle. " +
+                $"Nothing to synchronise.");
+
+            return;
         }
 
         Phase = hasDecoys ? KaiExecutePhase.Peeling : KaiExecutePhase.Staging;
@@ -384,14 +426,50 @@ public sealed class KaiCommand
             }
         }
 
-        bool enough = alive > 0 && ready >= MathF.Ceiling(alive * ReadyFraction);
-        bool waitedLongEnough = elapsed >= MaxStagingSeconds;
+        // The whole group is dead. There is nothing left to synchronise and
+        // nothing a commit would release, so the execute is simply over.
+        if (alive == 0)
+        {
+            Phase = KaiExecutePhase.Idle;
+
+            KaiLog.Event(nameof(Update),
+                $"execute on site {_targetSite} abandoned: the whole main group is dead " +
+                $"after {elapsed:F1}s of staging");
+
+            return false;
+        }
+
+        // The straggler clock starts when the first bot arrives, not when the
+        // phase opens. Before that the group is still travelling and the only
+        // limit that applies is the approach ceiling.
+        if (ready > 0 && _firstReadyAt < 0.0f)
+        {
+            _firstReadyAt = now;
+
+            KaiLog.Event(nameof(Update),
+                $"first of the main group is staged on site {_targetSite} after {elapsed:F1}s " +
+                $"of approach, stragglers have {MaxStagingSeconds:F0}s to join before the " +
+                $"group goes without them");
+        }
+
+        bool enough = ready >= MathF.Ceiling(alive * ReadyFraction);
+
+        // Two distinct timeouts, one of which is always armed. Stragglers are
+        // measured from the first arrival; a group where nobody has arrived at
+        // all is measured against the approach ceiling instead.
+        bool stragglersOutOfTime = _firstReadyAt >= 0.0f
+                                   && now - _firstReadyAt >= MaxStagingSeconds;
+        bool approachOutOfTime = _firstReadyAt < 0.0f && elapsed >= MaxApproachSeconds;
+        bool waitedLongEnough = stragglersOutOfTime || approachOutOfTime;
 
         if (!enough && !waitedLongEnough)
         {
             KaiLog.Throttled("staging", nameof(Update),
                 $"staging for site {_targetSite}: {ready} of {alive} in position, " +
-                $"{elapsed:F1}s elapsed", 2.0f);
+                $"{elapsed:F1}s since staging began" +
+                (_firstReadyAt >= 0.0f
+                    ? $", {now - _firstReadyAt:F1}s since the first arrival"
+                    : ", nobody staged yet"), 2.0f);
 
             return false;
         }
@@ -401,7 +479,8 @@ public sealed class KaiCommand
 
         KaiLog.Event(nameof(Update),
             $"COMMIT on site {_targetSite}: {ready} of {alive} in position after {elapsed:F1}s" +
-            (waitedLongEnough && !enough ? " (staging timed out, going anyway)" : "") +
+            (stragglersOutOfTime && !enough ? " (stragglers out of time, going anyway)" : "") +
+            (approachOutOfTime ? " (approach ceiling reached with nobody staged, going anyway)" : "") +
             ". The whole group goes at once.");
 
         return true;
@@ -412,6 +491,7 @@ public sealed class KaiCommand
         Phase = KaiExecutePhase.Idle;
         _targetSite = -1;
         _mainGroup.Clear();
+        _firstReadyAt = -1.0f;
         _readCarrierSite = -1;
         _readCarrierConfidence = 0.0f;
     }

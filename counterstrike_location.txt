@@ -1,0 +1,31 @@
+# counterstrike_location.txt
+#
+# The location of your Counter-Strike 2 installation, used by the install
+# steps in readme.md (and any copy script built around them) as the single
+# reference for where the game lives. Type the path here once; everything
+# else derives from it.
+#
+# Rules:
+#   - Lines beginning with '#' are comments and are ignored.
+#   - The FIRST line that is not a comment is taken as the path.
+#   - The path must be absolute, and must point at the folder that CONTAINS
+#     the 'game' directory of your Counter-Strike installation. That is, the
+#     folder where <path>/game/csgo/ exists. 
+#   - Do not put quotes around the path, even if it contains spaces.
+#
+# Typical locations:
+#
+#    game in a Steam library (the reference setup):
+#     D:\SteamLibrary\steamapps\common\Counter-Strike Global Offensive
+#
+#    game in the default Steam library:
+#     C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive
+#
+#   SteamCMD dedicated servers:
+#     C:\cs2server
+#     /home/steam/cs2server
+#
+# Edit the line below to match your machine, then follow the Installation
+# section of readme.md.
+
+D:\SteamLibrary\steamapps\common\Counter-Strike Global Offensive

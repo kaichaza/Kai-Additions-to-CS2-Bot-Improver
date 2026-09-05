@@ -1,0 +1,14 @@
+{
+  "mapName": "de_mirage",
+  "schemaVersion": 2,
+  "rounds": 115,
+  "matches": 22,
+  "stage": 2,
+  "firstSeenUtc": "2026-08-15 16:40:34Z",
+  "seededFromHistory": false,
+  "seededBecause": "",
+  "mappedUtc": "2026-08-15 21:19:05Z",
+  "mappedBecause": "60 rounds, 183 post-plant and 265 clear samples, graph at 2541 nodes (saturated)",
+  "maturedUtc": "2026-08-16 09:53:15Z",
+  "maturedBecause": "115 rounds, all 11 plays tried at least 8 times (120 calls in total)"
+}

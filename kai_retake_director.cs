@@ -86,6 +86,16 @@ public enum KaiRetakePhase
 
     // Defuser is defusing. Clearers are STILL holding.
     Commit = 3,
+
+    // Gathering at a ring short of the site before anyone goes in, knives
+    // out on the run when the legs are long. The site is hit by everyone on
+    // the same tick, because a retake that trickles in is a queue of fair
+    // duels for the lurker, and the whole point of arriving together is that
+    // the first T seen gets shot at from several angles at once.
+    //
+    // Appended after Commit so the existing values keep their numbers in
+    // old logs; the phase ORDER at runtime is Rally, Inspect, Bait, Commit.
+    Rally = 4,
 }
 
 public sealed class KaiRetakeDirector
@@ -99,6 +109,25 @@ public sealed class KaiRetakeDirector
     // for its whole life up to now, so a missing follower degrades rather
     // than breaks.
     public KaiPathFollower? Pathing;
+
+    // Asks the plugin where the tracked human is, if the handicap is on,
+    // fresh, and the asking team is entitled to know. Wired to
+    // TrackedTargetFor at map start, so the three gate checks live in one
+    // place and this class never has to know whether god mode is running.
+    // Null, or a null return, simply means no bias is applied and every
+    // covering bot behaves exactly as before.
+    public Func<int, KaiPoint?>? TrackedEnemy;
+
+    // Asks the arsenal whether this bot is already knifing for its own
+    // reasons (a dry bot's weapon state belongs to the arsenal, and the
+    // rally must not fight it over which slot is selected). Wired at map
+    // start; null means assume no.
+    public Func<int, bool>? IsKnifing;
+
+    // Puts a bot's best gun back in its hands when the rally run is over.
+    // Wired to the plugin's RestoreBestWeapon, which knows the inventory;
+    // when null the director falls back to a plain slot1.
+    public Action<CCSPlayerController>? RestoreWeapon;
 
     // ------------------------------------------------------------------
     // Tunables. Public so kai_retake can change them mid-session.
@@ -160,6 +189,134 @@ public sealed class KaiRetakeDirector
     // rather than crossing the site to reach it.
     public float DefuserStageMaxBombDistance = 800.0f;
 
+    // Fraction of the inspect window the defuser gets to reach its staging
+    // spot before the spot is written off and the plain bomb-watch standoff
+    // takes over instead.
+    //
+    // Some staging spots are simply not reachable from where the round has
+    // put the defuser: a full session showed one spending the entire inspect
+    // phase 'enroute', skipping node after node, never anchoring and never
+    // inspecting. A spot that has not been reached by this point of the
+    // window is not going to be reached at all, and the standoff is a worse
+    // position that actually exists.
+    public float StageGiveUpFraction = 0.6f;
+
+    // How far from the bomb a recorded position can be and still be swept as
+    // a lurk spot before anyone touches the bomb.
+    //
+    // This was a constant 2200 units, and at that range the sweep never once
+    // finished: every plant across two full playtest sessions ended its
+    // inspect phase with roughly half the list unseen, because twelve
+    // seconds is not enough time to walk eyes onto that much ground. A
+    // lurker further out than this can still shoot, but the clearers'
+    // held angles cover that; the sweep is for the corners close enough to
+    // break a defuse, and a list short enough to actually finish clears
+    // more of them than a long one ever did.
+    public float LurkSpotMaxRange = 1500.0f;
+
+    // How near a scan or hold candidate must be to the tracked human's
+    // position to count as covering them.
+    //
+    // Matches the plugin's pre-aim bias radius, because it is the same idea
+    // applied to the retake: the handicap decides WHICH authored angle a
+    // covering bot watches, never where it walks and never what it can
+    // shoot at. The bot watches the doorway nearest the human, not the
+    // human through a wall, so the line between god mode and a wallhack
+    // stays exactly where the contact support code drew it.
+    //
+    // This existed everywhere except here. Pre-plant, the pre-aim bias
+    // points bots at the human's doorway; post-plant the retake owns every
+    // CT and never read the tracked position at all, which is why a human
+    // could sit on a known coordinate and pick off the cover while three
+    // clearers stared at angles frozen at plant time.
+    public float TrackedWatchRadius = 700.0f;
+
+    // How often a covering bot may abandon its held angle for one that
+    // covers the tracked human's new position. Sticky angles are the whole
+    // point of AssignHoldAngle; this is the one sanctioned reason to
+    // reshuffle, and rate limiting it stops a strafing human from spinning
+    // the entire cover rotation like a weathervane.
+    public float TrackedRepointSeconds = 3.0f;
+
+    // ------------------------------------------------------------------
+    // Rally: arriving together
+    // ------------------------------------------------------------------
+
+    // The ring the retake gathers on, measured from the bomb. Far enough
+    // out not to be standing in the defence's angles while waiting, close
+    // enough that the final push is seconds, not a journey. Sits just
+    // inside DefenceRadius on purpose: a bot on the ring already counts as
+    // covering the defuse the moment the push starts.
+    public float RallyHoldDistance = 1100.0f;
+
+    // A bot within HoldDistance plus this counts as set for the release
+    // arithmetic, so somebody easing to a stop on the line is not the one
+    // straggler holding the whole side.
+    public float RallyHoldTolerance = 250.0f;
+
+    // Fraction of the alive CTs that must be on the ring before the side
+    // goes in. Two thirds, deliberately: with three, four or five alive
+    // that is everyone but one, which is the requested tolerance. One bot
+    // stuck across the map must not turn a synchronised hit back into the
+    // trickle it replaces.
+    public float RallyReadyFraction = 0.66f;
+
+    // Longest the rally may hold from the plant, whatever the ring looks
+    // like. The bomb does not wait, and neither does this.
+    public float RallyMaxSeconds = 15.0f;
+
+    // The rally only holds while the spare-time arithmetic still leaves at
+    // least this much on the clock, so gathering can never eat the time the
+    // inspect, the bait and the defuse itself need. Roughly InspectSeconds
+    // plus BaitSeconds with a little margin.
+    public float RallySpareFloor = 20.0f;
+
+    // Knife out only while further than this from the bomb. The last
+    // stretch to the ring is approached with the gun up, same principle as
+    // the rotation sprint's danger radius: however long the run, the part
+    // where somebody might actually be waiting is walked armed.
+    public float RallyKnifeMinDistance = 1400.0f;
+
+    // ------------------------------------------------------------------
+    // The defensive ring around the defuse
+    // ------------------------------------------------------------------
+
+    // The donut around the bomb a computed ring post may sit in. The floor
+    // keeps a post off the defuser's toes; the ceiling keeps it close
+    // enough that it is defending the defuse rather than patrolling.
+    public float RingRadiusMin = 260.0f;
+    public float RingRadiusMax = 750.0f;
+
+    // Furthest from the bomb an authored clear spot is worth assigning to a
+    // clearer. Candidates are still gathered out to maxSpotDistance, because
+    // the defuser's staging fallback needs the wide net, but a clearer posted
+    // beyond this is not defending the defuse, it is commuting. Left
+    // unassigned instead, the bot sweeps its beat through Inspect and then
+    // takes a computed ring post from Bait onward, which is the circle the
+    // defuser was always supposed to have. Matches RingRadiusMax so authored
+    // and computed posts obey the same ceiling.
+    public float ClearSpotMaxFromBomb = 750.0f;
+
+    // Minimum bearing separation, in degrees around the bomb, between any
+    // two defensive positions. This is what turns a pile of CTs into a
+    // circle facing outwards: posts are chosen to spread around the clock
+    // face, each owning its own slice of the approaches.
+    public float RingMinAngularGap = 55.0f;
+
+    // Minimum straight-line spacing between any two assigned anchors,
+    // authored or computed. Two bots standing in each other's pockets are
+    // one grenade, one spray, and one uncovered site.
+    public float MinPostSpacing = 220.0f;
+
+    // When the tracked human is within this of a covering bot, the bot
+    // watches the human's actual position instead of its assigned angle.
+    // The handicap knew exactly where the human stood while pinned bots
+    // stared down authored angles ninety degrees away and were looked at
+    // 'for quite some time' before reacting; inside this range the theory
+    // yields to the fact. Still attention only: the view cone goes to the
+    // doorway the human occupies, and the shooting remains native.
+    public float TrackedThreatRange = 1000.0f;
+
     // Extra headroom beyond the defuse time. When the bomb has less than
     // defuseTime plus this remaining, commit regardless of phase, because a
     // fake defuse that loses the round is not clever.
@@ -187,6 +344,13 @@ public sealed class KaiRetakeDirector
 
     // How close a clearer must get to its angle before it pins.
     private const float ArriveRadius = 90.0f;
+
+    // Inside this of the bomb, holding USE starts a defuse. The engine
+    // radius is 72 units; a little less is used so a marginal position does
+    // not produce a tap that fires nothing. Shared between the fake defuse
+    // and the bait walk-in, which have to agree about where "close enough"
+    // begins.
+    private const float FakeTapRange = 62.0f;
 
     // ------------------------------------------------------------------
     // Per-round state
@@ -225,6 +389,28 @@ public sealed class KaiRetakeDirector
     // slot -> the angle this covering bot holds once the sweep is done. Sticky
     // for the round, and kept clear of every other bot's arc.
     private readonly Dictionary<int, KaiPoint> _holdAngle = new();
+
+    // slot -> when this bot last checked its held angle against the tracked
+    // human's position. Rate limits the one sanctioned reshuffle so the
+    // cover follows the human at a walk rather than a twitch.
+    private readonly Dictionary<int, float> _holdRepointAt = new();
+
+    // When the Inspect phase actually began. With a rally in front of it,
+    // "seconds since the plant" no longer measures the inspect window, so
+    // every window below Rally is measured from here instead. Zero means
+    // Inspect has not started yet.
+    private float _inspectStartedAt;
+
+    // Which bots the rally has put a knife in the hands of, so the gun goes
+    // back the moment the run ends and never a moment later.
+    private readonly HashSet<int> _rallyKnife = new();
+
+    // Bots for whom no ring post could be computed this plant, so the
+    // search does not run again every tick for the rest of the round.
+    private readonly HashSet<int> _ringPostFailed = new();
+
+    // How many ring posts have been fabricated this plant, for naming.
+    private int _ringPostCount;
 
     // Per-bot scan state: the angles visible from where it is standing, where
     // it is in the cycle, and where it was standing when the set was built.
@@ -359,6 +545,15 @@ public sealed class KaiRetakeDirector
         _announcedApproach.Clear();
         _announcedArrival.Clear();
         _holdAngle.Clear();
+        _holdRepointAt.Clear();
+        _inspectStartedAt = 0.0f;
+        _ringPostFailed.Clear();
+        _ringPostCount = 0;
+
+        // Anyone still holding a rally knife gets its gun back before the
+        // state is dropped, or a round-end reset leaves a bot knifing into
+        // the next engagement.
+        EndRallyKnives("director reset");
         _scanSet.Clear();
         _scanIndex.Clear();
         _scanNext.Clear();
@@ -489,9 +684,52 @@ public sealed class KaiRetakeDirector
         AssignInspectionBeats(cts, bombPos);
         AssignClearers(cts, candidates);
 
+        // Gather before going in, when the clock and the headcount allow.
+        //
+        // The retake used to start its phase clocks at the plant and let
+        // every bot walk its own leg, so the side arrived in walk-distance
+        // order: measured over thirteen plants, the typical picture at
+        // Commit was the defuser plus one clearer set and the rest strung
+        // out en route, which is a queue of fair duels for the lurker. The
+        // rally holds everyone on a ring short of the site and releases
+        // them together, so the sweep opens as a crossfire instead.
+        //
+        // A lone CT has nobody to synchronise with, and a plant with no
+        // spare time has nothing to spend on gathering; both go straight to
+        // Inspect exactly as before.
+        float remainingAtPlant = RemainingBombSeconds(_plantTime);
+        float defuseTimeAtPlant;
+
+        if (_defuserHasKit)
+        {
+            defuseTimeAtPlant = DefuseWithKit;
+        }
+        else
+        {
+            defuseTimeAtPlant = DefuseWithoutKit;
+        }
+
+        float spareAtPlant = remainingAtPlant - defuseTimeAtPlant - MustCommitReserve;
+        bool rallying = cts.Count >= 2 && spareAtPlant > RallySpareFloor;
+
+        if (rallying)
+        {
+            Phase = KaiRetakePhase.Rally;
+            _inspectStartedAt = 0.0f;
+        }
+        else
+        {
+            Phase = KaiRetakePhase.Inspect;
+            _inspectStartedAt = _plantTime;
+        }
+
         KaiLog.Event(
             nameof(OnBombPlanted),
-            $"phase -> Inspect, defuser slot {_defuserSlot} ('{defuser.PlayerName}') kit={_defuserHasKit}, " +
+            $"phase -> {Phase}" +
+            (rallying
+                ? $" (gathering on the {RallyHoldDistance:F0} ring, {spareAtPlant:F1}s spare)"
+                : $" (no rally: {cts.Count} CT(s), {spareAtPlant:F1}s spare)") +
+            $", defuser slot {_defuserSlot} ('{defuser.PlayerName}') kit={_defuserHasKit}, " +
             $"{_clearAssignments.Count} clearers, {_lurkSpots.Count} lurk spots, " +
             $"inspect={InspectSeconds:F1}s then bait={BaitSeconds:F1}s");
 
@@ -551,11 +789,42 @@ public sealed class KaiRetakeDirector
     {
         var clearers = cts.Where(b => b.Slot != _defuserSlot).ToList();
         var taken = new HashSet<int>();
+        var takenAnchors = new List<KaiPoint>();
 
         foreach (var spot in candidates)
         {
             if (spot.Stage)
             {
+                continue;
+            }
+
+            // A post that cannot see the defuse cannot defend it. In the
+            // session of 2026-09-05 all three clearers drew authored spots
+            // 800-2000+ units from the plant, spent the whole defuse "en
+            // route", and stood stacked on the bomb while native post-plant
+            // logic dragged them back every contact window. Skipping the far
+            // spots here routes those bots into AssignRingPost instead.
+            float fromBomb = spot.Anchor.DistanceXY(_bombPos.X, _bombPos.Y);
+
+            if (fromBomb > ClearSpotMaxFromBomb)
+            {
+                KaiLog.Event(nameof(AssignClearers),
+                    $"'{spot.Name}' skipped: {fromBomb:F0} units from the bomb against a " +
+                    $"ceiling of {ClearSpotMaxFromBomb:F0}. Too far to defend the defuse, " +
+                    $"the bot will take a ring post instead.");
+
+                continue;
+            }
+
+            // Spacing between the posts themselves. The authored spots carry
+            // no such guarantee, and two anchors in the same pocket put two
+            // bots in one spray pattern while an approach goes unowned.
+            if (!KaiFormation.FarEnoughFrom(spot.Anchor, takenAnchors, MinPostSpacing))
+            {
+                KaiLog.Event(nameof(AssignClearers),
+                    $"'{spot.Name}' skipped: within {MinPostSpacing:F0} units of an anchor " +
+                    $"already assigned. Two bots in one pocket is one covered approach.");
+
                 continue;
             }
 
@@ -591,6 +860,7 @@ public sealed class KaiRetakeDirector
             }
 
             taken.Add(best.Slot);
+            takenAnchors.Add(spot.Anchor);
             _clearAssignments[best.Slot] = spot;
 
             KaiLog.Event(
@@ -643,7 +913,10 @@ public sealed class KaiRetakeDirector
         _lurkSpots.Clear();
 
         const float spacing = 220.0f;
-        const float maxRange = 2200.0f;
+
+        // The reasoning behind the range lives on the tunable itself: a list
+        // the sweep can actually finish beats a longer one it never does.
+        float maxRange = LurkSpotMaxRange;
 
         // Same vertical rule as the T side: everything pooled here is stored
         // at feet level, and the chest offset is added once when a bot is
@@ -1254,6 +1527,30 @@ public sealed class KaiRetakeDirector
         // Seconds available for anything other than defusing.
         float spare = remaining - defuseTime - MustCommitReserve;
 
+        // Is the gather still on? Only meaningful while already rallying:
+        // nothing below ever re-enters Rally, so a released side stays
+        // released. The three release triggers are, in order: enough of the
+        // side is set on the ring, the rally has held as long as it may, or
+        // the spare-time floor has been reached and gathering is no longer
+        // affordable.
+        int onRing = 0;
+        int aliveCts = 0;
+        bool rallying = Phase == KaiRetakePhase.Rally
+                        && spare > RallySpareFloor
+                        && elapsed < RallyMaxSeconds
+                        && !RallyReady(out onRing, out aliveCts);
+
+        // The inspect clock starts the moment the rally is over, or at the
+        // plant when there was no rally. Every window below Rally measures
+        // from here, because a window measured from the plant would have
+        // been consumed by the gathering it now sits behind.
+        if (!rallying && _inspectStartedAt <= 0.0f)
+        {
+            _inspectStartedAt = now;
+        }
+
+        float sinceInspect = _inspectStartedAt > 0.0f ? now - _inspectStartedAt : 0.0f;
+
         if (KaiBombState.IsBeingDefused())
         {
             // A defuse in progress ends the argument.
@@ -1273,10 +1570,19 @@ public sealed class KaiRetakeDirector
         }
         else if (aliveTs == 0)
         {
-            // Nobody left to find. Nothing to inspect for, nobody to bait.
+            // Nobody left to find. Nothing to inspect for, nobody to bait,
+            // and nobody worth arriving in formation against.
             Phase = KaiRetakePhase.Commit;
         }
-        else if (elapsed < InspectSeconds && !_sweepComplete)
+        else if (rallying)
+        {
+            Phase = KaiRetakePhase.Rally;
+
+            KaiLog.Throttled("rally", nameof(UpdatePhase),
+                $"rallying: {onRing} of {aliveCts} CT(s) on the ring, {elapsed:F1}s since " +
+                $"the plant, {spare:F1}s spare against a floor of {RallySpareFloor:F0}", 2.0f);
+        }
+        else if (sinceInspect < InspectSeconds && !_sweepComplete)
         {
             // Still corners nobody has looked at, and time to look at them.
             // The sweep finishing early is what usually ends this phase now;
@@ -1297,7 +1603,7 @@ public sealed class KaiRetakeDirector
             // difference between a bluff a lurker can hear and a click.
             Phase = KaiRetakePhase.Commit;
         }
-        else if (elapsed < InspectSeconds + BaitSeconds && spare > BaitSeconds)
+        else if (sinceInspect < InspectSeconds + BaitSeconds && spare > BaitSeconds)
         {
             // Either the site is swept and nobody was found, or the timer ran
             // out with corners still unchecked. Both are reasons to fake: the
@@ -1320,10 +1626,30 @@ public sealed class KaiRetakeDirector
         if (Phase != previous)
         {
             KaiLog.Event(nameof(UpdatePhase),
-                $"phase {previous} -> {Phase} (elapsed={elapsed:F1}s bombRemaining={remaining:F1}s " +
+                $"phase {previous} -> {Phase} (elapsed={elapsed:F1}s " +
+                $"sinceInspect={sinceInspect:F1}s bombRemaining={remaining:F1}s " +
                 $"defuseTime={defuseTime:F1}s spare={spare:F1}s aliveTs={aliveTs} " +
                 $"swept={_clearedSpots.Count}/{_lurkSpots.Count} complete={_sweepComplete} " +
                 $"taps={_fakeTapCount})");
+
+            if (previous == KaiRetakePhase.Rally)
+            {
+                // The release. Everyone goes in on this tick, and everyone
+                // goes in with a gun: any knife still out from the run is
+                // put away here, including on bots that never made the ring,
+                // because they are entering contested ground regardless.
+                EndRallyKnives("rally released, going in together");
+
+                RallyReady(out int setNow, out int aliveNow);
+
+                KaiComms.Call((int)CsTeam.CounterTerrorist, _defuserSlot, "rallygo",
+                    $"all in together, now: {setNow} of {aliveNow} on the ring", 10.0f);
+
+                KaiLog.Event(nameof(UpdatePhase),
+                    $"RALLY RELEASE after {elapsed:F1}s: {setNow} of {aliveNow} CT(s) set " +
+                    $"on the ring, the whole retake enters the site at once. Contact support " +
+                    $"stacks everyone onto the first fight from here.");
+            }
 
             // Say the phase change out loud. Knowing the side has stopped
             // clearing and started baiting is the difference between reading
@@ -1358,6 +1684,51 @@ public sealed class KaiRetakeDirector
                 }
             }
         }
+    }
+
+    // Is enough of the side set on the ring to go?
+    //
+    // Everyone alive on the CT side counts, defuser included: the defuser is
+    // part of the hit, not a spectator to it. Set means within the hold
+    // distance plus tolerance of the bomb, measured flat, the same way the
+    // T-side staging measures readiness against the site.
+    private bool RallyReady(out int onRing, out int aliveCts)
+    {
+        onRing = 0;
+        aliveCts = 0;
+
+        foreach (var bot in AliveBots(CsTeam.CounterTerrorist))
+        {
+            var origin = bot.PlayerPawn?.Value?.AbsOrigin;
+
+            if (origin == null)
+            {
+                continue;
+            }
+
+            aliveCts++;
+
+            if (_bombPos.DistanceXY(origin.X, origin.Y)
+                <= RallyHoldDistance + RallyHoldTolerance)
+            {
+                onRing++;
+            }
+        }
+
+        if (aliveCts == 0)
+        {
+            return true;
+        }
+
+        bool ready = onRing >= (int)MathF.Ceiling(aliveCts * RallyReadyFraction);
+
+        if (ready)
+        {
+            KaiLog.Throttled("rallyready", nameof(RallyReady),
+                $"{onRing} of {aliveCts} CT(s) set on the ring, that is enough to go", 2.0f);
+        }
+
+        return ready;
     }
 
     // Is this a one-man retake?
@@ -1923,9 +2294,51 @@ public sealed class KaiRetakeDirector
 
         var intent = intentFor(bot.Slot);
 
+        // Gathering. The defuser rallies with everyone else, toward its
+        // staging spot when one is authored, and enters the site on the
+        // same release tick as its cover. A defuser that walks in early is
+        // the exact bot the lurker is waiting for.
+        if (Phase == KaiRetakePhase.Rally)
+        {
+            DriveRally(now, bot, origin, intent, _defuserStage);
+            return;
+        }
+
         if (Phase == KaiRetakePhase.Inspect)
         {
             intent.SuppressUse = true;
+
+            // A staging spot the defuser has failed to reach for most of the
+            // window is written off. The spot exists to give the inspect
+            // phase a defuser with eyes on the site; a defuser spending the
+            // whole phase 'enroute' has neither anchored nor inspected, and
+            // the standoff below is a worse position that is at least
+            // reachable. The forgotten path matters too: the follower would
+            // otherwise keep walking the bot at the abandoned destination.
+            //
+            // Measured from when Inspect actually began, not from the plant:
+            // with a rally in front of it, plant-relative timing would burn
+            // the whole give-up budget on the gather.
+            if (_defuserStage != null)
+            {
+                float stageDistSqr =
+                    _defuserStage.Anchor.DistanceSqr(origin.X, origin.Y, origin.Z);
+
+                float inspectRef = _inspectStartedAt > 0.0f ? _inspectStartedAt : _plantTime;
+
+                if (stageDistSqr > ArriveRadius * ArriveRadius
+                    && now - inspectRef > InspectSeconds * StageGiveUpFraction)
+                {
+                    KaiLog.Event(nameof(DriveDefuser),
+                        $"slot {bot.Slot} has not reached stage spot '{_defuserStage.Name}' " +
+                        $"with {StageGiveUpFraction:P0} of the inspect window gone, still " +
+                        $"{MathF.Sqrt(stageDistSqr):F0} units out. Abandoning the spot for " +
+                        $"the plain standoff.");
+
+                    Pathing?.Forget(bot.Slot);
+                    _defuserStage = null;
+                }
+            }
 
             if (_defuserStage != null)
             {
@@ -2011,7 +2424,7 @@ public sealed class KaiRetakeDirector
             return;
         }
 
-        // Bait. Released to walk in; native pathing takes it to the bomb.
+        // Bait. The defuser walks in for the fake.
         intent.Anchored = false;
         intent.SourceName = "bait";
 
@@ -2022,6 +2435,42 @@ public sealed class KaiRetakeDirector
         }
 
         intent.SuppressUse = true;
+
+        // Steer it to the bomb rather than merely releasing it.
+        //
+        // "Released to walk in; native pathing takes it to the bomb" was the
+        // old comment here, and the logs proved it wrong: across two full
+        // playtest sessions the fake defuser produced thirty-five 'no tap
+        // yet' lines and not one actual tap, closing on the bomb at walking-
+        // wounded pace or not at all, because nothing native was actually
+        // taking it there. The same steer the stage approach uses fixes it:
+        // the follower carries the bot to the bomb along the graph, drops
+        // the leg inside its own arrive radius, and the direct fallback
+        // closes the last stretch into tap range.
+        float toBomb = MathF.Sqrt(_bombPos.DistanceSqr(origin.X, origin.Y, origin.Z));
+
+        if (toBomb > FakeTapRange)
+        {
+            var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+            var to = new KaiPoint(_bombPos.X, _bombPos.Y, _bombPos.Z);
+
+            bool steered = false;
+
+            if (Pathing != null)
+            {
+                steered = Pathing.Steer(bot.Slot, here, to, now, intent, "bait:walkin");
+            }
+
+            if (!steered)
+            {
+                intent.SteerTowards = to;
+            }
+
+            KaiLog.Throttled($"baitwalk:{bot.Slot}", nameof(DriveDefuser),
+                $"slot {bot.Slot} walking in for the fake, {toBomb:F0} units from the bomb",
+                2.0f);
+        }
+
         DriveFakeDefuse(now, bot, origin, intent, botController);
     }
 
@@ -2035,12 +2484,14 @@ public sealed class KaiRetakeDirector
         KaiBotIntent intent,
         object? botController)
     {
-        // Only meaningful once close enough that USE would start a defuse. The
-        // engine radius is 72 units; use a little less so a marginal position
-        // does not produce a tap that fires nothing.
+        // Only meaningful once close enough that USE would start a defuse.
+        // FakeTapRange sits a little inside the engine's 72 unit radius so a
+        // marginal position does not produce a tap that fires nothing, and it
+        // is the same constant the walk-in above steers against, so the two
+        // agree about where "close enough" begins.
         float dist = MathF.Sqrt(_bombPos.DistanceSqr(origin.X, origin.Y, origin.Z));
 
-        if (dist > 62.0f)
+        if (dist > FakeTapRange)
         {
             KaiLog.Throttled(
                 $"fakefar:{bot.Slot}",
@@ -2206,6 +2657,50 @@ public sealed class KaiRetakeDirector
             return false;
         }
 
+        // Settle on the angle covering the tracked human instead of cycling.
+        //
+        // The mirror of the plugin's glance-sweep settle bias, which its own
+        // comment measured firing 69 times in 659 tracked seconds with none
+        // of it during a retake. A bot flicking five angles every 0.9s is
+        // looking at the right one a fifth of the time; a bot settled on the
+        // doorway the human is behind is looking at it when they step out.
+        // The candidates were all built with a line-of-sight trace, so this
+        // watches a visible authored angle near the human, never the human
+        // through a wall, and it moves nobody. The defuser is excluded by
+        // construction (only clearers reach this function) and by the guard,
+        // so nothing here can ever pull a crosshair off the bomb.
+        var tracked = TrackedHumanTarget();
+
+        if (tracked != null && bot.Slot != _defuserSlot)
+        {
+            KaiPoint? covering = null;
+            float coveringGap = TrackedWatchRadius;
+
+            foreach (var candidate in visible)
+            {
+                float gap = candidate.DistanceXY(tracked.X, tracked.Y);
+
+                if (gap < coveringGap)
+                {
+                    coveringGap = gap;
+                    covering = candidate;
+                }
+            }
+
+            if (covering != null)
+            {
+                intent.Watch = new KaiPoint(
+                    covering.X, covering.Y, covering.Z + KaiHeights.Head);
+                intent.SourceName = "scan:tracked";
+
+                KaiLog.Throttled($"scantracked:{bot.Slot}", nameof(ScanFromPosition),
+                    $"slot {bot.Slot} has stopped cycling and settled on the angle " +
+                    $"{coveringGap:F0} units from the tracked human", 4.0f);
+
+                return true;
+            }
+        }
+
         if (!_scanIndex.TryGetValue(bot.Slot, out int cursor))
         {
             cursor = 0;
@@ -2284,9 +2779,41 @@ public sealed class KaiRetakeDirector
 
         // Sticky: an angle once taken is held, or the whole side reshuffles
         // its arcs every tick and nobody actually watches anything.
+        //
+        // One sanctioned exception. When the tracked human is known and the
+        // held angle no longer covers where they actually are, holding it is
+        // covering a theory while the real threat sets up somewhere else:
+        // measured against a human on the T side, three clearers held angles
+        // frozen at plant time while the contact list knew the human's exact
+        // coordinates, and the defuser died to an approach nobody was
+        // watching. So the angle is dropped and reselected below, where the
+        // tracked bias picks the doorway they are behind. Rate limited so
+        // the cover rotates on the human's moves, not on their strafing.
         if (_holdAngle.TryGetValue(bot.Slot, out var held))
         {
-            return held;
+            var humanNow = TrackedHumanTarget();
+
+            if (humanNow == null
+                || held.DistanceXY(humanNow.X, humanNow.Y) <= TrackedWatchRadius)
+            {
+                return held;
+            }
+
+            float nowTime = Server.CurrentTime;
+            float lastCheck = _holdRepointAt.GetValueOrDefault(bot.Slot, 0.0f);
+
+            if (nowTime - lastCheck < TrackedRepointSeconds)
+            {
+                return held;
+            }
+
+            _holdRepointAt[bot.Slot] = nowTime;
+            _holdAngle.Remove(bot.Slot);
+
+            KaiLog.Event(nameof(AssignHoldAngle),
+                $"slot {bot.Slot} drops its held angle at ({held.X:F0},{held.Y:F0}): the " +
+                $"tracked human is {held.DistanceXY(humanNow.X, humanNow.Y):F0} units from " +
+                $"it, outside the {TrackedWatchRadius:F0} covering radius. Reselecting.");
         }
 
         var eye = new Vector(origin.X, origin.Y, origin.Z + pawn.ViewOffset.Z);
@@ -2314,6 +2841,16 @@ public sealed class KaiRetakeDirector
 
         KaiPoint? best = null;
         float bestDistance = -1.0f;
+
+        // When the human's position is known, a candidate inside the
+        // covering radius of it beats every merely-distant one, and the
+        // nearest such candidate wins. The clash test still applies, so the
+        // first clearer to pick claims the human's doorway and the rest
+        // spread across the other approaches exactly as before; a known
+        // threat gets one dedicated pair of eyes, not the whole rotation.
+        var tracked = TrackedHumanTarget();
+        KaiPoint? bestTracked = null;
+        float bestTrackedGap = TrackedWatchRadius;
 
         // Candidates are the known lurk spots plus every learned duel angle
         // near the site: doorways, corridor ends, the places somebody has to
@@ -2365,11 +2902,33 @@ public sealed class KaiRetakeDirector
                 continue;
             }
 
+            // Passed every test a normal candidate has to. Now score it both
+            // ways: as an ordinary far angle, and as cover on the human.
+            if (tracked != null)
+            {
+                float gap = candidate.DistanceXY(tracked.X, tracked.Y);
+
+                if (gap < bestTrackedGap)
+                {
+                    bestTrackedGap = gap;
+                    bestTracked = candidate;
+                }
+            }
+
             if (distance > bestDistance)
             {
                 bestDistance = distance;
                 best = candidate;
             }
+        }
+
+        // The human-covering candidate outranks the merely-far one.
+        bool humanBiased = false;
+
+        if (bestTracked != null)
+        {
+            best = bestTracked;
+            humanBiased = true;
         }
 
         if (best == null)
@@ -2384,9 +2943,13 @@ public sealed class KaiRetakeDirector
 
         KaiLog.Event(nameof(AssignHoldAngle),
             $"slot {bot.Slot} takes the angle at ({best.X:F0},{best.Y:F0}), " +
-            $"{bestDistance:F0} units out on bearing " +
+            $"{best.DistanceXY(origin.X, origin.Y):F0} units out on bearing " +
             $"{KaiFormation.Bearing(origin.X, origin.Y, best.X, best.Y):F0}, " +
-            $"clear of {takenBearings.Count} team mate arc(s). It watches that, not the bomb.");
+            $"clear of {takenBearings.Count} team mate arc(s)" +
+            (humanBiased
+                ? $", chosen because it sits {bestTrackedGap:F0} units from the tracked " +
+                  $"human. It watches their doorway, not the bomb."
+                : ". It watches that, not the bomb."));
 
         return best;
     }
@@ -2413,6 +2976,14 @@ public sealed class KaiRetakeDirector
 
         _clearAssignments.TryGetValue(bot.Slot, out var spot);
 
+        // Gathering. Everything else about this bot's retake waits until the
+        // whole side goes in together.
+        if (Phase == KaiRetakePhase.Rally)
+        {
+            DriveRally(now, bot, origin, intent, spot);
+            return;
+        }
+
         if (Phase == KaiRetakePhase.Inspect)
         {
             if (DriveInspection(now, bot, origin, intent))
@@ -2433,9 +3004,56 @@ public sealed class KaiRetakeDirector
             // Nothing learned to sweep yet. Fall through to the angle.
         }
 
+        // Demote a spot the ring cannot reach. Rally has returned above and
+        // Inspect keeps its beats, so only Bait and Commit arrive here with a
+        // spot still set; a post further out than RingRadiusMax at that point
+        // is a clearer walking away from the defuse it is meant to be
+        // guarding. Nulling the stored assignment as well means this fires
+        // once, and the very next block fabricates a ring post in its place.
+        //
+        // AssignClearers now refuses to hand out spots beyond
+        // ClearSpotMaxFromBomb, so this mostly exists as a belt for whatever
+        // slips past that: the Retry path, hand-authored data added later, or
+        // a tunable someone widens without reading this far.
+        if (spot != null
+            && Phase != KaiRetakePhase.Inspect
+            && spot.Anchor.DistanceXY(_bombPos.X, _bombPos.Y) > RingRadiusMax)
+        {
+            KaiLog.Event(nameof(DriveClearer),
+                $"slot {bot.Slot} demoted from '{spot.Name}': " +
+                $"{spot.Anchor.DistanceXY(_bombPos.X, _bombPos.Y):F0} units from the bomb " +
+                $"is outside the {RingRadiusMax:F0} ring. Taking a computed post instead.");
+
+            _clearAssignments[bot.Slot] = null;
+            spot = null;
+        }
+
         if (spot == null)
         {
-            return;
+            // A spotless clearer used to be left entirely stock from here,
+            // which is the pile-on-the-bomb bug wearing a new phase: with
+            // USE suppressed, native post-plant logic walked these bots to
+            // the bomb to defuse, the suppression blocked the defuse, and
+            // they simply stood on it, stacked together, covering nothing.
+            // AssignClearers fixed exactly this for the Inspect sweep and
+            // the fix stopped one phase short.
+            //
+            // During Inspect the beats are the job and this stays as it was.
+            // From Bait onward the bot is given a computed ring post: a real
+            // recorded position in the donut around the bomb, spread by
+            // bearing from every post already taken, facing outwards. The
+            // circle of cover the defuser was supposed to have.
+            if (Phase == KaiRetakePhase.Inspect)
+            {
+                return;
+            }
+
+            spot = AssignRingPost(bot, origin, map);
+
+            if (spot == null)
+            {
+                return;
+            }
         }
 
         float distSqr = spot.Anchor.DistanceSqr(origin.X, origin.Y, origin.Z);
@@ -2500,6 +3118,34 @@ public sealed class KaiRetakeDirector
         intent.Anchored = true;
         intent.Crouch = spot.Crouch;
 
+        // The human is close. Watch the fact, not the theory.
+        //
+        // A pinned bot's view cone is wherever its assigned angle points,
+        // and native vision only acquires what falls inside the cone: with
+        // the human's exact position in hand, bots were still stared at
+        // 'for quite some time' before reacting, because their forced watch
+        // faced somewhere else entirely and native eyes never got the
+        // chance. Inside TrackedThreatRange the assigned angle yields and
+        // the cone goes to the human's actual position, so the moment they
+        // peek they are already in view. Attention only, as everywhere
+        // else: the trigger stays native.
+        var threat = TrackedHumanTarget();
+
+        if (threat != null
+            && bot.Slot != _defuserSlot
+            && threat.DistanceXY(origin.X, origin.Y) <= TrackedThreatRange)
+        {
+            intent.Watch = new KaiPoint(threat.X, threat.Y, threat.Z + KaiHeights.Chest);
+            intent.SourceName = "cover:threat";
+
+            KaiLog.Throttled($"coverthreat:{bot.Slot}", nameof(DriveClearer),
+                $"slot {bot.Slot} watching the tracked human directly, " +
+                $"{threat.DistanceXY(origin.X, origin.Y):F0} units away, assigned angle " +
+                $"yields to the live threat", 3.0f);
+
+            return;
+        }
+
         // While the site is being inspected, scan rather than lock on.
         //
         // A bot holding one angle through the whole clear looks like, and is,
@@ -2538,9 +3184,400 @@ public sealed class KaiRetakeDirector
             $"source={intent.SourceName}", 3.0f);
     }
 
+    // Fabricate a defensive ring post for a clearer with no authored spot.
+    //
+    // The post is a real recorded position (a lurk spot or a learned duel
+    // angle near the site, the same pool the scans use), not free geometry,
+    // so it is somewhere a player has actually stood rather than a point
+    // inside a crate. Selection maximises the smallest bearing gap, around
+    // the bomb, to every position already taken by the defence, which is
+    // what spreads the side around the clock face; linear spacing and the
+    // donut bounds are hard filters. The watch point faces outwards, away
+    // from the bomb, because the threat arrives from outside the ring and
+    // the one direction guaranteed to hold nothing dangerous is inward.
+    //
+    // The result goes into _clearAssignments, so from the next tick this
+    // bot is driven by exactly the same enroute, arrive, and cover code as
+    // a bot with an authored spot, hold-angle bias and threat override
+    // included. One assignment path, two sources of spots.
+    private KaiHoldSpot? AssignRingPost(CCSPlayerController bot, Vector origin, KaiMapTactics map)
+    {
+        if (_ringPostFailed.Contains(bot.Slot))
+        {
+            return null;
+        }
+
+        // Everything the defence already occupies, for spacing and spread.
+        var takenPositions = new List<KaiPoint>();
+
+        foreach (var assigned in _clearAssignments.Values)
+        {
+            if (assigned != null)
+            {
+                takenPositions.Add(assigned.Anchor);
+            }
+        }
+
+        if (_defuserStage != null)
+        {
+            takenPositions.Add(_defuserStage.Anchor);
+        }
+
+        KaiPoint? best = null;
+        float bestGap = -1.0f;
+        float bestBotDist = float.MaxValue;
+        bool bestMeetsGap = false;
+
+        foreach (var candidate in ScanCandidates(map))
+        {
+            float fromBomb = candidate.DistanceXY(_bombPos.X, _bombPos.Y);
+
+            if (fromBomb < RingRadiusMin || fromBomb > RingRadiusMax)
+            {
+                continue;
+            }
+
+            if (!KaiFormation.FarEnoughFrom(candidate, takenPositions, MinPostSpacing))
+            {
+                continue;
+            }
+
+            // Smallest bearing gap, around the bomb, to anything taken. An
+            // empty defence means every candidate is equally spread; call
+            // that a full half circle.
+            float candidateBearing = KaiFormation.Bearing(
+                _bombPos.X, _bombPos.Y, candidate.X, candidate.Y);
+
+            float minGap = 180.0f;
+
+            foreach (var takenPos in takenPositions)
+            {
+                float takenBearing = KaiFormation.Bearing(
+                    _bombPos.X, _bombPos.Y, takenPos.X, takenPos.Y);
+
+                float gap = MathF.Abs(candidateBearing - takenBearing);
+
+                if (gap > 180.0f)
+                {
+                    gap = 360.0f - gap;
+                }
+
+                if (gap < minGap)
+                {
+                    minGap = gap;
+                }
+            }
+
+            float botDist = candidate.DistanceXY(origin.X, origin.Y);
+
+            // Spread first, walk second. A candidate clearing the angular
+            // floor always beats one that does not, whatever their gaps;
+            // within the same tier the widest slice of unowned clock face
+            // wins, and the nearer candidate breaks ties within a few
+            // degrees of each other. The floor only bends when nothing on
+            // the map can meet it, because a cramped ring still beats a
+            // pile.
+            bool meetsGap = minGap >= RingMinAngularGap;
+            bool better;
+
+            if (meetsGap && !bestMeetsGap)
+            {
+                better = true;
+            }
+            else if (!meetsGap && bestMeetsGap)
+            {
+                better = false;
+            }
+            else if (minGap > bestGap + 5.0f)
+            {
+                better = true;
+            }
+            else if (minGap > bestGap - 5.0f && botDist < bestBotDist)
+            {
+                better = true;
+            }
+            else
+            {
+                better = false;
+            }
+
+            if (better)
+            {
+                bestGap = minGap;
+                bestBotDist = botDist;
+                bestMeetsGap = meetsGap;
+                best = candidate;
+            }
+        }
+
+        if (best == null)
+        {
+            _ringPostFailed.Add(bot.Slot);
+
+            KaiLog.Event(nameof(AssignRingPost),
+                $"no ring post available for slot {bot.Slot}: nothing recorded in the " +
+                $"{RingRadiusMin:F0}-{RingRadiusMax:F0} donut clears the spacing tests. " +
+                $"The bot stays stock for this plant.",
+                KaiLogLevel.Error);
+
+            return null;
+        }
+
+        // Face outwards: from the bomb, through the post, and beyond.
+        float outBearing = KaiFormation.Bearing(_bombPos.X, _bombPos.Y, best.X, best.Y);
+        float radians = outBearing * MathF.PI / 180.0f;
+
+        var watch = new KaiPoint(
+            best.X + (MathF.Cos(radians) * 500.0f),
+            best.Y + (MathF.Sin(radians) * 500.0f),
+            best.Z + KaiHeights.Chest);
+
+        _ringPostCount++;
+
+        var post = new KaiHoldSpot
+        {
+            Name = $"ring_{_ringPostCount:D2}",
+            Team = (int)CsTeam.CounterTerrorist,
+            Anchor = new KaiPoint(best.X, best.Y, best.Z),
+            Watch = watch,
+            Stage = false,
+        };
+
+        _clearAssignments[bot.Slot] = post;
+
+        KaiLog.Event(nameof(AssignRingPost),
+            $"slot {bot.Slot} takes computed post '{post.Name}' at " +
+            $"({best.X:F0},{best.Y:F0}), {best.DistanceXY(_bombPos.X, _bombPos.Y):F0} units " +
+            $"from the bomb on bearing {outBearing:F0}, {bestGap:F0} degrees clear of the " +
+            $"nearest taken post, facing outwards. The ring closes around the defuse.");
+
+        return post;
+    }
+
+    // Bring one CT to the rally ring, fast.    //
+    // Two states. Off the ring: run flat out at the destination, knife out
+    // for the movement speed while the leg is long and nothing is shooting,
+    // eyes down the direction of travel. On the ring: stop, gun out, face
+    // the site, and wait for the release. The release itself is a phase
+    // change, so every bot leaves the ring on the same tick, which is the
+    // entire point: the first T seen after that is looked at by several
+    // guns at once instead of meeting the side one bot at a time.
+    //
+    // The knife rule mirrors the rotation sprint's: contact ends it
+    // immediately, because a knife is not an answer to somebody shooting,
+    // and the last stretch inside RallyKnifeMinDistance is run with the gun
+    // up because that is where somebody might actually be waiting.
+    private void DriveRally(
+        float now,
+        CCSPlayerController bot,
+        Vector origin,
+        KaiBotIntent intent,
+        KaiHoldSpot? spot)
+    {
+        intent.SuppressUse = true;
+
+        float toBomb = _bombPos.DistanceXY(origin.X, origin.Y);
+
+        if (toBomb <= RallyHoldDistance)
+        {
+            // Set. Gun out, hold the ring, watch the site.
+            RallyKnife(bot, false);
+            Pathing?.Forget(bot.Slot);
+
+            intent.Anchored = true;
+            intent.Walk = false;
+            intent.Crouch = false;
+            intent.Watch = new KaiPoint(
+                _bombPos.X, _bombPos.Y, _bombPos.Z + KaiHeights.Chest);
+            intent.SourceName = "rally:set";
+
+            KaiLog.Throttled($"rallyhold:{bot.Slot}", nameof(DriveRally),
+                $"slot {bot.Slot} set on the ring, {toBomb:F0} units from the bomb, " +
+                $"waiting for the release", 3.0f);
+
+            return;
+        }
+
+        // Still closing. Sprint, and knife when the leg justifies it.
+        var pawn = bot.PlayerPawn?.Value;
+        var nativeBot = pawn?.Bot;
+        bool contact = nativeBot != null
+                       && (nativeBot.IsEnemyVisible || nativeBot.IsAttacking);
+
+        RallyKnife(bot, !contact && toBomb > RallyKnifeMinDistance);
+
+        intent.Anchored = false;
+        intent.Walk = false;
+        intent.Crouch = false;
+        intent.SourceName = "rally:run";
+
+        var here = new KaiPoint(origin.X, origin.Y, origin.Z);
+
+        KaiPoint destination;
+
+        if (spot != null)
+        {
+            destination = new KaiPoint(spot.Anchor.X, spot.Anchor.Y, spot.Anchor.Z);
+        }
+        else
+        {
+            destination = new KaiPoint(_bombPos.X, _bombPos.Y, _bombPos.Z);
+        }
+
+        bool steered = false;
+
+        if (Pathing != null)
+        {
+            steered = Pathing.Steer(bot.Slot, here, destination, now, intent, "rally");
+        }
+
+        if (!steered)
+        {
+            intent.SteerTowards = destination;
+        }
+
+        // Eyes forward while running: at the immediate steer target rather
+        // than at corners it is passing, same choice the rotation sprint
+        // makes. The ring hold above is where careful looking resumes.
+        var ahead = intent.SteerTowards;
+
+        if (ahead != null)
+        {
+            intent.Watch = new KaiPoint(ahead.X, ahead.Y, ahead.Z + KaiHeights.Chest);
+        }
+
+        KaiLog.Throttled($"rallyrun:{bot.Slot}", nameof(DriveRally),
+            $"slot {bot.Slot} running to the ring, {toBomb:F0} units from the bomb, " +
+            $"knife={_rallyKnife.Contains(bot.Slot)}", 2.0f);
+    }
+
+    // Put a knife in this bot's hands, or take it back out, for the rally.
+    //
+    // A dry bot already knifing under the arsenal's management is left
+    // alone in both directions: its weapon state is the arsenal's business
+    // and the rally must not fight it over which slot is selected.
+    private void RallyKnife(CCSPlayerController bot, bool wantKnife)
+    {
+        if (wantKnife)
+        {
+            if (IsKnifing != null && IsKnifing(bot.Slot))
+            {
+                return;
+            }
+
+            bool first = _rallyKnife.Add(bot.Slot);
+
+            try
+            {
+                bot.ExecuteClientCommand("slot3");
+            }
+            catch (Exception ex)
+            {
+                KaiLog.Throttled($"rallyknife:{bot.Slot}", nameof(RallyKnife),
+                    $"could not switch slot {bot.Slot} to the knife: {ex.Message}",
+                    30.0f, KaiLogLevel.Error);
+            }
+
+            if (first)
+            {
+                KaiLog.Event(nameof(RallyKnife),
+                    $"slot {bot.Slot} has the knife out for the rally run");
+            }
+
+            return;
+        }
+
+        if (!_rallyKnife.Remove(bot.Slot))
+        {
+            return;
+        }
+
+        RestoreGun(bot);
+
+        KaiLog.Event(nameof(RallyKnife),
+            $"slot {bot.Slot} run over, gun back out");
+    }
+
+    // Give this bot its gun back, preferring the plugin's inventory-aware
+    // restore over a blind slot switch.
+    private void RestoreGun(CCSPlayerController bot)
+    {
+        if (IsKnifing != null && IsKnifing(bot.Slot))
+        {
+            // The arsenal wants this bot knifing (it is dry). Leave it.
+            return;
+        }
+
+        try
+        {
+            if (RestoreWeapon != null)
+            {
+                RestoreWeapon(bot);
+            }
+            else
+            {
+                bot.ExecuteClientCommand("slot1");
+            }
+        }
+        catch (Exception ex)
+        {
+            KaiLog.Throttled($"rallygun:{bot.Slot}", nameof(RestoreGun),
+                $"could not restore slot {bot.Slot}'s gun: {ex.Message}",
+                30.0f, KaiLogLevel.Error);
+        }
+    }
+
+    // Every rally knife goes away. Called on the release, so the side
+    // enters shooting, and on reset, so a round end never leaves a bot
+    // knifing into the next engagement.
+    private void EndRallyKnives(string why)
+    {
+        if (_rallyKnife.Count == 0)
+        {
+            return;
+        }
+
+        int restored = 0;
+
+        foreach (int slot in _rallyKnife)
+        {
+            var p = Utilities.GetPlayerFromSlot(slot);
+
+            if (p == null || !p.IsValid || !p.PawnIsAlive)
+            {
+                continue;
+            }
+
+            RestoreGun(p);
+            restored++;
+        }
+
+        _rallyKnife.Clear();
+
+        KaiLog.Event(nameof(EndRallyKnives),
+            $"{restored} rally knife(s) put away ({why})");
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
+
+    // Where the tracked human is, if the CT side is entitled to know.
+    //
+    // Thin wrapper over the plugin's TrackedTargetFor, which owns the three
+    // gate checks: handicap on, position fresh, asking team is the enemy of
+    // the human. This class is CT-only machinery, so the asking team is
+    // always the CTs, mirroring the T-sector fan hardcoding its own side on
+    // the other half of the plugin.
+    private KaiPoint? TrackedHumanTarget()
+    {
+        if (TrackedEnemy == null)
+        {
+            return null;
+        }
+
+        return TrackedEnemy((int)CsTeam.CounterTerrorist);
+    }
 
     private float RemainingBombSeconds(float now)
     {
