@@ -1,6 +1,6 @@
 # KaiBotTactics
 
-This project is an extension of ed0ard's CS2 Bot Improver:
+This project is an extension of @ed0ard's CS2 Bot Improver:
 **[CS2-Bot-Improver](https://github.com/ed0ard/CS2-Bot-Improver)** by ed0ard,
 and it needs ed0ard's bot improver to be installed since it plugs directly into his library. Provided there are no major breaking changes to ed0ard's project. This source shouldn't need recompiling each time CS2 releases a new update. But having said that I can't guarantee it won't break if I haven't played CS2 vs bots in a few weeks on my machine.
 
